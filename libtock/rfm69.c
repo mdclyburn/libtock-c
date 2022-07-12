@@ -1,12 +1,12 @@
 #include "rfm69.h"
 #include "tock.h"
 
-int rfm69_exists() {
+int rfm69_exists(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 0, 0, 0);
     return tock_command_return_novalue_to_returncode(r);
 }
 
-int rfm69_use_variable_length_packets() {
+int rfm69_use_variable_length_packets(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 45, 1, 0);
     return tock_command_return_novalue_to_returncode(r);
 }
@@ -29,7 +29,7 @@ int rfm69_set_sync_word(
     return tock_command_return_novalue_to_returncode(r);
 }
 
-int rfm69_disable_addressing() {
+int rfm69_disable_addressing(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 50, 256, 256);
     return tock_command_return_novalue_to_returncode(r);
 }
@@ -51,7 +51,7 @@ int rfm69_configure_address_bcast(
     return tock_command_return_novalue_to_returncode(r);
 }
 
-int rfm69_clear_encryption_key() {
+int rfm69_clear_encryption_key(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 61, 0, 0);
     return tock_command_return_novalue_to_returncode(r);
 }
@@ -69,7 +69,7 @@ int rfm69_set_tx_rx_buffer(uint8_t* const buffer, const uint32_t len) {
     return tock_allow_rw_return_to_returncode(r);
 }
 
-int rfm69_transmit() {
+int rfm69_transmit(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 10, 0, 0);
     return tock_command_return_novalue_to_returncode(r);
 }

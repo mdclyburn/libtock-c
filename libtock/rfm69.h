@@ -10,21 +10,20 @@ int rfm69_exists(void);
 // Configuration
 
 /// Use variable-length packets.
-int rfm69_use_variable_length_packets();
+int rfm69_use_variable_length_packets(void);
 /// Use fixed-length packets.
 int rfm69_use_fixed_length_packets(
     const uint8_t packet_length);
 
 /// Enable/disable the sync word.
-int rfm69_set_sync_word_length(
-    const uint8_t length);
+int rfm69_use_sync_word(const uint8_t length);
 /// Set the sync word.
 int rfm69_set_sync_word(
     const uint32_t word_msb,
     const uint32_t word_lsb);
 
 /// Turn off node address functionality.
-int rfm69_disable_addressing();
+int rfm69_disable_addressing(void);
 /// Set and use node address only.
 int rfm69_configure_address(
     const uint8_t node_address);
@@ -34,7 +33,7 @@ int rfm69_configure_address_bcast(
     const uint8_t broadcast_address);
 
 /// Clear and disable the encryption key.
-int rfm69_clear_encryption_key();
+int rfm69_clear_encryption_key(void);
 /// Set the encryption key's bytes.
 int rfm69_set_encryption_key(
     const uint8_t byte_idx,
@@ -48,4 +47,4 @@ int rfm69_set_tx_rx_buffer(
     const uint32_t len);
 
 /// Transmit the current buffer contents.
-int rfm69_transmit();
+int rfm69_transmit(void);
