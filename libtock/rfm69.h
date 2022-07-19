@@ -48,3 +48,6 @@ int rfm69_set_tx_rx_buffer(
 
 /// Transmit the current buffer contents.
 int rfm69_transmit(void);
+
+/// Dump register values.
+int rfm69_dump_registers(const uint32_t sel);

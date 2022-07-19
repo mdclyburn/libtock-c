@@ -73,3 +73,8 @@ int rfm69_transmit(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 10, 0, 0);
     return tock_command_return_novalue_to_returncode(r);
 }
+
+int rfm69_dump_registers(const uint32_t sel) {
+    syscall_return_t r = command(DRIVER_NUM_RFM69, 400, sel, 0);
+    return tock_command_return_novalue_to_returncode(r);
+}
