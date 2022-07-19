@@ -29,6 +29,11 @@ int rfm69_set_sync_word(
     return tock_command_return_novalue_to_returncode(r);
 }
 
+int rfm69_set_bit_rate(const uint16_t bit_rate) {
+    syscall_return_t r = command(DRIVER_NUM_RFM69, 42, bit_rate, 0);
+    return tock_command_return_novalue_to_returncode(r);
+}
+
 int rfm69_disable_addressing(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 50, 256, 256);
     return tock_command_return_novalue_to_returncode(r);
@@ -72,6 +77,11 @@ int rfm69_set_tx_rx_buffer(uint8_t* const buffer, const uint32_t len) {
 int rfm69_transmit(void) {
     syscall_return_t r = command(DRIVER_NUM_RFM69, 10, 0, 0);
     return tock_command_return_novalue_to_returncode(r);
+}
+
+int rfm69_set_tx_complete_callback(subscribe_upcall callback, void* callback_args) {
+    subscribe_return_t sval = subscribe(DRIVER_NUM_RFM69, 0, callback, callback_args);
+    return tock_subscribe_return_to_returncode(sval);
 }
 
 int rfm69_dump_registers(const uint32_t sel) {

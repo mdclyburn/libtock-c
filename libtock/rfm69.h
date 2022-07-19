@@ -22,6 +22,9 @@ int rfm69_set_sync_word(
     const uint32_t word_msb,
     const uint32_t word_lsb);
 
+// Set the bit rate.
+int rfm69_set_bit_rate(const uint16_t bit_rate);
+
 /// Turn off node address functionality.
 int rfm69_disable_addressing(void);
 /// Set and use node address only.
@@ -48,6 +51,9 @@ int rfm69_set_tx_rx_buffer(
 
 /// Transmit the current buffer contents.
 int rfm69_transmit(void);
+
+/// Set the callback for completed packet transmissions.
+int rfm69_set_tx_complete_callback(subscribe_upcall callback, void* callback_args);
 
 /// Dump register values.
 int rfm69_dump_registers(const uint32_t sel);
