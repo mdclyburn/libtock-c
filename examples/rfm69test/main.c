@@ -34,10 +34,15 @@ int main(void) {
 
         delay_ms(1520);
         int r = rfm69_transmit();
-        delay_ms(100);
-
-        while (!rts) { delay_ms(333); }
-        rts = false;
+        if (r != 0) {
+            printf("TX failed (%i).\n", r);
+            rts = true;
+        } else {
+            rts = false;
+            delay_ms(50);
+            while (!rts) { delay_ms(333); }
+            rts = false;
+        }
     }
 
     while (true) { delay_ms(3000); }
