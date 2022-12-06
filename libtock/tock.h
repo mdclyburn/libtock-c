@@ -152,6 +152,8 @@ int tock_command_return_novalue_to_returncode(syscall_return_t);
 // variants.
 int tock_command_return_u32_to_returncode(syscall_return_t, uint32_t*);
 
+int tock_command_return_u64_to_returncode(syscall_return_t, uint64_t*);
+
 // Convert a `subscribe_return_t` to a `returncode_t`.
 int tock_subscribe_return_to_returncode(subscribe_return_t);
 

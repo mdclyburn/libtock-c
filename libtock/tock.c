@@ -66,6 +66,25 @@ int tock_command_return_u32_to_returncode(syscall_return_t command_return, uint3
   }
 }
 
+int tock_command_return_u64_to_returncode(syscall_return_t command_return, uint64_t* val) {
+    printf("0 = %lu\n1 = %lu\n2 = %lu\n",
+           command_return.data[0],
+           command_return.data[1],
+           command_return.data[2]);
+    // command_return.data[0] = lower 32 bits
+    // command_return.data[1] = upper 32 bits
+    if (command_return.type == TOCK_SYSCALL_SUCCESS_U64) {
+        *val = ((uint64_t)command_return.data[0]) | (((uint64_t) command_return.data[1]) << 32);
+        return RETURNCODE_SUCCESS;
+    } else if (command_return.type == TOCK_SYSCALL_FAILURE) {
+        return tock_status_to_returncode(command_return.data[0]);
+    } else {
+        // The remaining SyscallReturn variants must never happen if using this
+        // function. We return `EBADRVAL` to signal an unexpected return variant.
+        return RETURNCODE_EBADRVAL;
+    }
+}
+
 int tock_subscribe_return_to_returncode(subscribe_return_t subscribe_return) {
   // If the subscribe was successful, easily return SUCCESS.
   if (subscribe_return.success) {
