@@ -205,6 +205,10 @@ int adc_stop_sampling(void) {
   return tock_command_return_novalue_to_returncode(res);
 }
 
+int adc_stop_sampling_channel(const uint8_t channel_no) {
+    syscall_return_t res = command(DRIVER_NUM_ADC, 500, channel_no, 0);
+    return tock_command_return_novalue_to_returncode(res);
+}
 
 // ***** Callback Wrappers *****
 

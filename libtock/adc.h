@@ -80,6 +80,7 @@ int adc_continuous_buffered_sample(uint8_t channel, uint32_t frequency);
 // to stop a continuous sampling operation
 int adc_stop_sampling(void);
 
+int adc_stop_sampling_channel(const uint8_t channel_no);
 
 // ***** Callback Wrappers *****
 
