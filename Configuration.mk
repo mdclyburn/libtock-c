@@ -27,8 +27,8 @@ RANLIB := -ranlib
 READELF := -readelf
 SIZE := -size
 
-# Set default region sizes for process memory requirements.
-STACK_SIZE       ?= 2048
+# Set default region sizes
+STACK_SIZE       ?= 4096
 APP_HEAP_SIZE    ?= 1024
 KERNEL_HEAP_SIZE ?= 1024
 
