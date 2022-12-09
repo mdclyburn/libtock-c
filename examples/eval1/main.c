@@ -27,6 +27,10 @@ adc_callback2(uint8_t, uint16_t, void*);
 void
 app_start_sampling(int, int, int, void*);
 
+uint32_t lcg_parkmiller(uint32_t*);
+
+uint32_t next_random(void);
+
 void
 app_start_sampling(__attribute__ ((unused)) int _a0,
                    __attribute__ ((unused)) int _a1,
@@ -45,13 +49,16 @@ app_start_sampling(__attribute__ ((unused)) int _a0,
     switch (app_info->app_no)
     {
     case 0:
-        sampling_freq = 2100;
+        // 500 - 2100 S/s
+        sampling_freq = (next_random() % 1600) + 500;
         break;
     case 1:
-        sampling_freq = 1000;
+        // 200 - 1000 S/s
+        sampling_freq = (next_random() % 800) + 200;
         break;
     case 2:
-        sampling_freq = 1300;
+        // 600 - 1300 S/s
+        sampling_freq = (next_random() % 700) + 600;
         break;
     default:
         printf("unhandled app no. %d\n", app_info->app_no);
@@ -131,4 +138,24 @@ int main(void) {
     timer_every(7000, app_start_sampling, &Apps[2], &sampling_timers[2]);
 
     while(true) { yield(); }
+}
+
+uint32_t lcg_parkmiller(uint32_t *state)
+{
+    const uint32_t N = 0x7fffffff;
+    const uint32_t G = 48271u;
+
+    uint32_t div = *state / (N / G);  /* max : 2,147,483,646 / 44,488 = 48,271 */
+    uint32_t rem = *state % (N / G);  /* max : 2,147,483,646 % 44,488 = 44,487 */
+
+    uint32_t a = rem * G;        /* max : 44,487 * 48,271 = 2,147,431,977 */
+    uint32_t b = div * (N % G);  /* max : 48,271 * 3,399 = 164,073,129 */
+
+    return *state = (a > b) ? (a - b) : (a + (N - b));
+}
+
+uint32_t __random_seed = 1;
+
+uint32_t next_random(void) {
+    return lcg_parkmiller(&__random_seed);
 }
