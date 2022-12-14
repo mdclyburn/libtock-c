@@ -67,10 +67,10 @@ int tock_command_return_u32_to_returncode(syscall_return_t command_return, uint3
 }
 
 int tock_command_return_u64_to_returncode(syscall_return_t command_return, uint64_t* val) {
-    printf("0 = %lu\n1 = %lu\n2 = %lu\n",
-           command_return.data[0],
-           command_return.data[1],
-           command_return.data[2]);
+    /* printf("0 = %lu\n1 = %lu\n2 = %lu\n", */
+    /*        command_return.data[0], */
+    /*        command_return.data[1], */
+    /*        command_return.data[2]); */
     // command_return.data[0] = lower 32 bits
     // command_return.data[1] = upper 32 bits
     if (command_return.type == TOCK_SYSCALL_SUCCESS_U64) {

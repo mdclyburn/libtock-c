@@ -15,6 +15,7 @@ struct app_info_t
 
 uint16_t count = 0;
 
+bool Run = true;
 struct app_info_t Apps[AppCount];
 tock_timer_t sampling_timers[AppCount];
 
@@ -41,24 +42,24 @@ app_start_sampling(__attribute__ ((unused)) int _a0,
 
     // Stop sampling on whatever channel this app is currently using.
     adc_stop_sampling_channel(app_info->channel_to_use);
-    printf("App %d stopped sampling on channel %d.\n",
-           app_info->app_no,
-           app_info->channel_to_use);
+    /* printf("App %d stopped sampling on channel %d.\n", */
+    /*        app_info->app_no, */
+    /*        app_info->channel_to_use); */
 
     uint32_t sampling_freq;
     switch (app_info->app_no)
     {
     case 0:
-        // 500 - 2100 S/s
-        sampling_freq = (next_random() % 1600) + 500;
+        // 100 - 2100 S/s
+        sampling_freq = ((next_random() + next_random() + next_random()) % 2100) + 200;
         break;
     case 1:
-        // 200 - 1000 S/s
-        sampling_freq = (next_random() % 800) + 200;
+        // 100 - 1000 S/s
+        sampling_freq = ((next_random() + next_random() + next_random()) % 1150) + 300;
         break;
     case 2:
-        // 600 - 1300 S/s
-        sampling_freq = (next_random() % 700) + 600;
+        // 100 - 1300 S/s
+        sampling_freq = ((next_random() + next_random() + next_random()) % 1000) + 300;
         break;
     default:
         printf("unhandled app no. %d\n", app_info->app_no);
@@ -76,18 +77,26 @@ app_start_sampling(__attribute__ ((unused)) int _a0,
         if (rc == RETURNCODE_SUCCESS)
         {
             app_info->channel_to_use = next_channel_no;
-            printf("App %d started sampling channel %u at %lu s/sec.\n",
-                   app_info->app_no,
-                   next_channel_no,
-                   sampling_freq);
+            /* printf("App %d started sampling channel %u at %lu s/sec.\n", */
+            /*        app_info->app_no, */
+            /*        next_channel_no, */
+            /*        sampling_freq); */
             break;
         }
         else
         {
-            printf("App %d just realized channel no. %d is busy.\n",
-                   app_info->app_no,
-                   next_channel_no);
+            /* printf("App %d just realized channel no. %d is busy.\n", */
+            /*        app_info->app_no, */
+            /*        next_channel_no); */
         }
+    }
+
+    if (Run)
+    {
+        timer_in((next_random() % 3000) + 2000,
+                 app_start_sampling,
+                 (void*) app_info,
+                 &sampling_timers[app_info->app_no]);
     }
 
     return;
@@ -116,10 +125,10 @@ int main(void) {
     int rc;
 
     adc_channel_count(&ChannelCount);
-    printf("There are %d channels available.\n", ChannelCount);
+    /* printf("There are %d channels available.\n", ChannelCount); */
 
     // Set up the applications' info.
-    printf("Setting up application information.\n");
+    /* printf("Setting up application information.\n"); */
     for (uint8_t i = 0; i < 3; i++)
     {
         struct app_info_t* const a = &Apps[i];
@@ -127,15 +136,30 @@ int main(void) {
         a->channel_to_use = i % ChannelCount;
     }
 
-    printf("Setting callback. ");
+    /* printf("Setting callback... "); */
     rc = adc_set_continuous_sample_callback(adc_callback, NULL);
-    printf("%i\n", rc);
+    /* printf(" return code %i\n", rc); */
 
     // Set up timers to fire for "applications".
-    printf("Configuring timers.\n");
-    timer_every(3000, app_start_sampling, &Apps[0], &sampling_timers[0]);
-    timer_every(5000, app_start_sampling, &Apps[1], &sampling_timers[1]);
-    timer_every(7000, app_start_sampling, &Apps[2], &sampling_timers[2]);
+    timer_in(1333, app_start_sampling, &Apps[0], &sampling_timers[0]);
+    /* timer_in(3255, app_start_sampling, &Apps[1], &sampling_timers[1]); */
+    /* timer_every(5070, app_start_sampling, &Apps[2], &sampling_timers[2]); */
+
+    delay_ms(300 * 1000);
+
+    // Stop periodic timers.
+    /* for (uint8_t i = 0; i < 3; i++) */
+    /* { */
+    /*     timer_cancel(&sampling_timers[i]); */
+    /* } */
+
+    for (uint8_t i = 0; i < ChannelCount; i++)
+    {
+        adc_stop_sampling_channel(Apps[i].channel_to_use);
+    }
+
+    const uint64_t e = eacc_total_accounted();
+    printf("Accounted: %lu\n", (uint32_t) e);
 
     while(true) { yield(); }
 }
@@ -154,7 +178,7 @@ uint32_t lcg_parkmiller(uint32_t *state)
     return *state = (a > b) ? (a - b) : (a + (N - b));
 }
 
-uint32_t __random_seed = 1;
+uint32_t __random_seed = 0x286482;
 
 uint32_t next_random(void) {
     return lcg_parkmiller(&__random_seed);
