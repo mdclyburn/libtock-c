@@ -4,41 +4,46 @@
 
 #include "console.h"
 
-typedef struct putstr_data {
+#define CIRC_BUF_LEN 5
+
+typedef struct putstr_data_elem {
   char* buf;
   int len;
   bool called;
-  struct putstr_data* next;
-} putstr_data_t;
+} putstr_data_elem_t;
 
-static putstr_data_t *putstr_head = NULL;
-static putstr_data_t *putstr_tail = NULL;
+putstr_data_elem_t putstr_cbuf[CIRC_BUF_LEN];
+int cbuf_head = 0;
+int cbuf_count = 0;
 
 static void putstr_upcall(int   _x __attribute__ ((unused)),
                           int   _y __attribute__ ((unused)),
                           int   _z __attribute__ ((unused)),
                           void* ud __attribute__ ((unused))) {
-  putstr_data_t* data = putstr_head;
-  data->called = true;
-  putstr_head  = data->next;
+    putstr_data_elem_t* data = &putstr_cbuf[cbuf_head];
+    data->called = true;
+    free(data->buf);
 
-  if (putstr_head == NULL) {
-    putstr_tail = NULL;
-  } else {
-    int ret;
-    ret = putnstr_async(putstr_head->buf, putstr_head->len, putstr_upcall, NULL);
-    if (ret < 0) {
-      // XXX There's no path to report errors currently, so just drop it
-      putstr_upcall(0, 0, 0, NULL);
+    if (cbuf_count > 0) {
+        int ret;
+        putstr_data_elem_t* head = &putstr_cbuf[cbuf_head];
+        ret = putnstr_async(head->buf, head->len, putstr_upcall, NULL);
+        if (ret < 0) {
+            // XXX There's no path to report errors currently, so just drop it
+            putstr_upcall(0, 0, 0, NULL);
+        }
     }
-  }
+
+    return;
 }
 
 int putnstr(const char *str, size_t len) {
   int ret = RETURNCODE_SUCCESS;
 
-  putstr_data_t* data = (putstr_data_t*)malloc(sizeof(putstr_data_t));
-  if (data == NULL) return RETURNCODE_ENOMEM;
+  if (cbuf_count == CIRC_BUF_LEN) return RETURNCODE_ENOMEM;
+
+  putstr_data_elem_t* data = &putstr_cbuf[(cbuf_head + cbuf_count) % CIRC_BUF_LEN];
+  cbuf_count++;
 
   data->len    = len;
   data->called = false;
@@ -48,17 +53,10 @@ int putnstr(const char *str, size_t len) {
     goto putnstr_fail_buf_alloc;
   }
   strncpy(data->buf, str, len);
-  data->next = NULL;
 
-  if (putstr_tail == NULL) {
-    // Invariant, if tail is NULL, head is also NULL
+  if (cbuf_count == 1) {
     ret = putnstr_async(data->buf, data->len, putstr_upcall, NULL);
     if (ret < 0) goto putnstr_fail_async;
-    putstr_head = data;
-    putstr_tail = data;
-  } else {
-    putstr_tail->next = data;
-    putstr_tail       = data;
   }
 
   yield_for(&data->called);
@@ -66,7 +64,8 @@ int putnstr(const char *str, size_t len) {
 putnstr_fail_async:
   free(data->buf);
 putnstr_fail_buf_alloc:
-  free(data);
+  cbuf_head = (cbuf_head + 1) % CIRC_BUF_LEN;
+  cbuf_count--;
 
   return ret;
 }
