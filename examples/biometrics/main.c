@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <aes.h>
 #include <humidity.h>
 #include <temperature.h>
 #include <timer.h>
