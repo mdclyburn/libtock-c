@@ -6,6 +6,7 @@
 #include <crc.h>
 #include <dma.h>
 #include <humidity.h>
+#include <led.h>
 #include <rfm69.h>
 #include <temperature.h>
 #include <timer.h>
@@ -43,11 +44,21 @@ void hail_exp_04(void);
 void hail_exp_05(void);
 void hail_exp_06(void);
 void hail_exp_07(void);
+void hail_exp_08(void);
+void hail_exp_08b(void);
+void hail_exp_09(void);
+void hail_exp_10(void);
+void hail_exp_11(void);
 
 void
 adc_sampling_completed(uint8_t, uint16_t, void*);
 void
 adc_buffered_sampling_completed(uint8_t, uint32_t, uint16_t*, void*);
+void
+adc_buffered_sampling_completed_ip(uint8_t, uint32_t, uint16_t*, void*);
+
+void
+temperature_read_completed_ip(int, int, int, void*);
 
 void
 throwaway_callback(int, int, int, void*);
@@ -60,19 +71,28 @@ int main(void) {
         mpr = (mpr * 11) + 38 % 9997;
     }
 
-    delay_ms(500);
+    // use UART to get it to turn off after it is done.
+    /* delay_ms(50); */
+    /* for (uint8_t i = 0; i < 5; i++) */
+    /*     printf("i\n"); */
 
     adc_set_buffer(sample_buffer, 5);
-    adc_set_buffered_sample_callback(adc_buffered_sampling_completed, NULL);
+    adc_set_single_sample_callback(adc_sampling_completed, NULL);
+    adc_set_buffered_sample_callback(adc_buffered_sampling_completed_ip, NULL);
     adc_set_continuous_sample_callback(adc_sampling_completed, NULL);
     humidity_set_callback(throwaway_callback, NULL);
-    temperature_set_callback(throwaway_callback, NULL);
+    temperature_set_callback(temperature_read_completed_ip, NULL);
+
+    printf("i\n");
+    /* adc_buffered_sample(0, 600); */
+    delay_ms(450);
+
     /* spi_set_master_read_buffer(buffer_spi_r, 256); */
     /* spi_set_master_write_buffer(buffer_spi_w, 256); */
     /* spi_init(); */
     /* spi_set_rate(2000); */
 
-    hail_exp_01();
+    hail_exp_ip();
 
     /* printf("done\n"); */
     /* delay_ms(100); */
@@ -235,12 +255,12 @@ void hail_exp_01(void)
 {
     for (uint16_t i = 0; i < 100; i++)
     {
-        adc_buffered_sample(0, 650);
         /* timer_in(50, timer_fired, NULL, &adc_timer); */
-        aes_do_something();
-        printf("some characters some characters some characters some characters some characters\n");
         humidity_read();
         temperature_read();
+        aes_do_something();
+        printf("some characters some characters some characters some characters some characters\n");
+        adc_buffered_sample(0, 650);
 
         delay_ms(250);
     }
@@ -329,6 +349,131 @@ hail_exp_07(void)
     return;
 }
 
+// ADC + AES, UART + SENSE
+void
+hail_exp_08(void)
+{
+    for (uint8_t i = 0; i < 100; i++)
+    {
+        adc_buffered_sample(0, 650);
+        aes_do_something();
+        delay_ms(125);
+
+        printf("some characters some characters some characters some characters some characters\n");
+        humidity_read();
+        temperature_read();
+        delay_ms(125);
+    }
+}
+
+// ADC + AES, UART + SENSE
+void
+hail_exp_08b(void)
+{
+    for (uint8_t i = 0; i < 100; i++)
+    {
+        adc_buffered_sample(0, 650);
+        aes_do_something();
+        delay_ms(125);
+
+        printf("some characters some characters some characters some characters some characters\n");
+        humidity_read();
+        temperature_read();
+        delay_ms(125);
+    }
+}
+
+// ADC + SENSE, UART + ENCRYPT
+void
+hail_exp_09(void)
+{
+    for (uint8_t i = 0; i < 100; i++)
+    {
+        printf("some characters some characters some characters some characters some characters\n");
+        aes_do_something();
+        delay_ms(125);
+
+        adc_buffered_sample(0, 650);
+        /* timer_in(50, timer_fired, NULL, &adc_timer); */
+        humidity_read();
+        temperature_read();
+        delay_ms(125);
+    }
+}
+
+// ADC + UART + ENCRYPT, SENSE
+void
+hail_exp_10(void)
+{
+    for (uint8_t i = 0; i < 100; i++)
+    {
+        adc_buffered_sample(0, 650);
+        /* timer_in(50, timer_fired, NULL, &adc_timer); */
+        aes_do_something();
+        printf("some characters some characters some characters some characters some characters\n");
+        delay_ms(125);
+
+        humidity_read();
+        temperature_read();
+        delay_ms(125);
+    }
+}
+
+// ADC + UART + SENSE, ENCRYPT
+void
+hail_exp_11(void)
+{
+    for (uint8_t i = 0; i < 100; i++)
+    {
+        adc_buffered_sample(0, 650);
+        /* timer_in(50, timer_fired, NULL, &adc_timer); */
+        humidity_read();
+        temperature_read();
+        printf("some characters some characters some characters some characters some characters\n");
+        delay_ms(125);
+
+        aes_do_something();
+        delay_ms(125);
+    }
+}
+
+// UART + SENSE + ENCRYPT, ADC
+void
+hail_exp_12(void)
+{
+    for (uint8_t i = 0; i < 100; i++)
+    {
+        aes_do_something();
+        humidity_read();
+        temperature_read();
+        printf("some characters some characters some characters some characters some characters\n");
+        delay_ms(125);
+
+        adc_buffered_sample(0, 650);
+        delay_ms(125);
+    }
+}
+
+// Batched upcalls.
+void
+hail_exp_ip(void)
+{
+    for (uint8_t i = 0; i < 50; i++)
+    {
+        adc_buffered_sample(0, 650);
+        /* adc_single_sample(1); */
+        /* led_toggle(0); */
+        /* printf("some characters some characters some characters some characters some characters\n"); */
+
+        delay_ms(500);
+
+        temperature_read();
+
+        delay_ms(500);
+    }
+    /* led_toggle(0); */
+}
+
 void
 timer_fired(__attribute__ ((unused)) int _a0,
             __attribute__ ((unused)) int _a1,
@@ -339,11 +484,22 @@ timer_fired(__attribute__ ((unused)) int _a0,
     return;
 }
 
+uint64_t val = 0;
+
 void
 adc_sampling_completed(__attribute__ ((unused)) uint8_t channel_no,
                        __attribute__ ((unused)) uint16_t sample_value,
                        __attribute__ ((unused)) void* parameter)
 {
+    val += channel_no;
+    for (uint32_t i = 0; i < 1000000; i++)
+    {
+        if (sample_value > 65530) { printf("over\n"); }
+        else { val += sample_value; }
+    }
+    /* temperature_read_completed_ip(1, 0, 0, NULL); */
+    printf("adc: %llu\n", val);
+
     return;
 }
 
@@ -353,6 +509,42 @@ adc_buffered_sampling_completed(__attribute__ ((unused)) uint8_t channel_no,
                                 __attribute__ ((unused)) uint16_t* samples,
                                 __attribute__ ((unused)) void* parameter)
 {
+    return;
+}
+
+void
+adc_buffered_sampling_completed_ip(__attribute__ ((unused)) uint8_t channel_no,
+                                   __attribute__ ((unused)) uint32_t sample_count,
+                                   __attribute__ ((unused)) uint16_t* samples,
+                                   __attribute__ ((unused)) void* parameter)
+{
+    /* led_toggle(0); */
+    if (parameter != NULL) { return; }
+    for (uint32_t i = 0; i < 300000; i++)
+    {
+        if (sample_count > 65530) { printf("over\n"); }
+        else { val += samples[i % sample_count]; }
+    }
+    printf("adc: %llu\n", val);
+
+    return;
+}
+
+uint64_t last_temperature = 0;
+
+void
+temperature_read_completed_ip(int temperature,
+                              __attribute__ ((unused)) int a2,
+                              __attribute__ ((unused)) int a3,
+                              __attribute__ ((unused)) void* a4)
+{
+    last_temperature += temperature;
+    for (uint32_t i = 0; i < 1000000; i++)
+    {
+        last_temperature += temperature + i;
+    }
+    printf("temp: %llu\n", last_temperature);
+
     return;
 }
 

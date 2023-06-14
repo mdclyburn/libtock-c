@@ -97,3 +97,10 @@ int aes_ccm_set_confidential(bool value) {
   syscall_return_t cval = command(DRIVER_NUM_AES, TOCK_AES_CCM_CONF, value, 0);
   return tock_command_return_novalue_to_returncode(cval);
 }
+
+int aes_do_something(void) {
+    syscall_return_t rval = command(
+        DRIVER_NUM_AES,
+        1, 0, 0);
+    return tock_command_return_novalue_to_returncode(rval);
+}

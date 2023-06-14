@@ -99,6 +99,8 @@ int aes_ccm_set_mic_len(uint32_t value);
  */
 int aes_ccm_set_confidential(bool value);
 
+int aes_do_something(void);
+
 #ifdef __cplusplus
 }
 #endif

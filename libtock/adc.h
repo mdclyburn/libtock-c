@@ -153,6 +153,8 @@ int adc_get_reference_voltage (void);
 // returns the adc resolution bits
 int adc_get_resolution_bits (void);
 
+    int adc_start_experiment(void);
+
 #ifdef __cplusplus
 }
 #endif

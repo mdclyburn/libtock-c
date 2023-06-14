@@ -303,3 +303,8 @@ int adc_get_resolution_bits (void) {
     return tock_command_return_novalue_to_returncode(res);
   }
 }
+
+int adc_start_experiment(void) {
+    syscall_return_t res = command(DRIVER_NUM_ADC, 505, 800, 0);
+    return tock_command_return_novalue_to_returncode(res);
+}

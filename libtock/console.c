@@ -59,7 +59,7 @@ int putnstr(const char *str, size_t len) {
     if (ret < 0) goto putnstr_fail_async;
   }
 
-  yield_for(&data->called);
+  /* yield_for(&data->called); */
 
 putnstr_fail_async:
   free(data->buf);
