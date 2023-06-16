@@ -50,7 +50,7 @@ void check_return_code(const int rc)
     if (rc != RETURNCODE_SUCCESS)
     {
         printf("biometrics: non-zero return code\n");
-        while (true);
+        while (true) { yield(); }
     }
 
     return;
@@ -61,8 +61,8 @@ void sensing_timer_fired(__attribute__ ((unused)) int a1,
                          __attribute__ ((unused)) int a3,
                          __attribute__ ((unused)) void* a4)
 {
-    check_return_code(temperature_read());
-    check_return_code(humidity_read());
+    temperature_read();
+    humidity_read();
 
     return;
 }
