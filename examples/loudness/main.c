@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include <adc.h>
+#include <led.h>
 #include <timer.h>
 
 #define SAMPLE_BUFFER_LEN 512
@@ -20,7 +21,7 @@ void audio_buffer_filled(uint8_t, uint32_t, uint16_t*, void*);
 
 int main(void)
 {
-    printf("starting loudness\n");
+    /* printf("starting loudness\n"); */
     audio_pending = false;
     check_return_code(
         adc_set_buffer(samples, SAMPLE_BUFFER_LEN),
@@ -37,7 +38,30 @@ int main(void)
 
         // Process the audio data.
         // See if it crosses the loudness threshold.
-        printf("processing audio\n");
+        float avg_loudness = 0.0;
+        for (uint32_t i = 0; i < SAMPLE_BUFFER_LEN; i++)
+        {
+            float sample;
+            if (samples[i] >= 32768)
+            {
+                sample = (float) samples[i] - 32768.0;
+            }
+            else
+            {
+                sample = 32768.0 - (float) samples[i];
+            }
+
+            avg_loudness += sample / (float) SAMPLE_BUFFER_LEN;
+        }
+
+        if (avg_loudness > 20000.0)
+        {
+            led_on(0);
+        }
+        else
+        {
+            led_off(0);
+        }
 
         // Mark the buffer as ready to hold new data.
         audio_pending = false;
@@ -49,7 +73,7 @@ void check_return_code(const int rc, const char* const note)
     if (rc != RETURNCODE_SUCCESS)
     {
         printf("loudness: non-zero return code (%s)\n", note);
-        while (true);
+        while (true) { yield(); }
     }
 
     return;
@@ -60,7 +84,7 @@ void audio_sampling_timer_fired(__attribute__ ((unused)) int a1,
                                 __attribute__ ((unused)) int a3,
                                 __attribute__ ((unused)) void* a4)
 {
-    printf("sampling timer fired\n");
+    /* printf("sampling timer fired\n"); */
     const uint8_t channel = 0;
     const uint32_t sampling_frequency = 5120;
 
