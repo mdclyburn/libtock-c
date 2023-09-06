@@ -7,7 +7,7 @@
 #include <timer.h>
 
 #define SAMPLE_BUFFER_LEN 512
-#define SAMPLING_PERIOD_MS 7500
+#define SAMPLING_PERIOD_MS 3000
 
 tock_timer_t audio_sampling_timer;
 
@@ -19,6 +19,9 @@ void check_return_code(int, const char* const);
 void audio_sampling_timer_fired(int, int, int, void*);
 void audio_buffer_filled(uint8_t, uint32_t, uint16_t*, void*);
 
+uint32_t next_random(void);
+uint32_t lcg_parkmiller(uint32_t* state);
+
 int main(void)
 {
     /* printf("starting loudness\n"); */
@@ -29,10 +32,14 @@ int main(void)
     check_return_code(
         adc_set_buffered_sample_callback(audio_buffer_filled, NULL),
         "adc_set_buffered_sample_callback");
-    timer_every(SAMPLING_PERIOD_MS, audio_sampling_timer_fired, NULL, &audio_sampling_timer);
 
     while (true)
     {
+        timer_in(SAMPLING_PERIOD_MS - 375 + (next_random() % 750),
+                 audio_sampling_timer_fired,
+                 NULL,
+                 &audio_sampling_timer);
+
         // Wait until we have collected the audio.
         while (!audio_pending) { yield(); }
 
@@ -90,9 +97,10 @@ void audio_sampling_timer_fired(__attribute__ ((unused)) int a1,
 
     if (!audio_pending)
     {
-        check_return_code(
-            adc_buffered_sample(channel, sampling_frequency),
-            "adc_buffered_sample");
+        /* check_return_code( */
+        /*     adc_buffered_sample(channel, sampling_frequency), */
+        /*     "adc_buffered_sample"); */
+        adc_buffered_sample(channel, sampling_frequency);
     }
 
     return;
@@ -106,4 +114,24 @@ void audio_buffer_filled(__attribute__ ((unused)) uint8_t channel_no,
     audio_pending = true;
 
     return;
+}
+
+uint32_t lcg_parkmiller(uint32_t *state)
+{
+    const uint32_t N = 0x7fffffff;
+    const uint32_t G = 48271u;
+
+    uint32_t div = *state / (N / G);  /* max : 2,147,483,646 / 44,488 = 48,271 */
+    uint32_t rem = *state % (N / G);  /* max : 2,147,483,646 % 44,488 = 44,487 */
+
+    uint32_t a = rem * G;        /* max : 44,487 * 48,271 = 2,147,431,977 */
+    uint32_t b = div * (N % G);  /* max : 48,271 * 3,399 = 164,073,129 */
+
+    return *state = (a > b) ? (a - b) : (a + (N - b));
+}
+
+uint32_t __random_seed = 0x28d7dda8;
+
+uint32_t next_random(void) {
+    return lcg_parkmiller(&__random_seed);
 }
