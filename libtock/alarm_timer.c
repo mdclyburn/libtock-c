@@ -4,6 +4,11 @@
 #include <limits.h>
 #include <stdlib.h>
 
+uint32_t __random_seed = 0x28d7dda8;
+
+uint32_t lcg_parkmiller(uint32_t*);
+uint32_t next_random(void);
+
 // Returns 0 if a <= b < c, 1 otherwise
 static int within_range(uint32_t a, uint32_t b, uint32_t c) {
   return (b - a) < (b - c);
@@ -134,7 +139,14 @@ int timer_in(uint32_t ms, subscribe_upcall cb, void* ud, tock_timer_t *timer) {
   uint32_t interval = (ms / 1000) * frequency + (ms % 1000) * (frequency / 1000);
   uint32_t now;
   alarm_internal_read(&now);
-  return alarm_at(now, interval, cb, ud, &timer->alarm);
+  __random_seed ^= now;
+
+  return alarm_at(now,
+                  interval - (interval / 20) + (next_random() % (interval / 10)),
+                  /* interval, */
+                  cb,
+                  ud,
+                  &timer->alarm);
 }
 
 static void repeating_upcall( uint32_t                     now,
@@ -160,8 +172,17 @@ void timer_every(uint32_t ms, subscribe_upcall cb, void* ud, tock_timer_t* repea
 
   uint32_t now;
   alarm_internal_read(&now);
-  alarm_at(now, interval, (subscribe_upcall*)repeating_upcall,
-           (void*)repeating, &repeating->alarm);
+  __random_seed ^= now;
+
+  /* alarm_at(now, interval, (subscribe_upcall*)repeating_upcall, */
+  /*          (void*)repeating, &repeating->alarm); */
+
+  alarm_at(now,
+           interval - (interval / 20) + (next_random() % (interval / 10)),
+           /* interval, */
+           (subscribe_upcall*)repeating_upcall,
+           (void*)repeating,
+           &repeating->alarm);
 }
 
 void timer_cancel(tock_timer_t* timer) {
@@ -210,4 +231,22 @@ int yield_for_with_timeout(bool* cond, uint32_t ms) {
 
   timer_cancel(&timer);
   return RETURNCODE_SUCCESS;
+}
+
+uint32_t lcg_parkmiller(uint32_t *state)
+{
+    const uint32_t N = 0x7fffffff;
+    const uint32_t G = 48271u;
+
+    uint32_t div = *state / (N / G);  /* max : 2,147,483,646 / 44,488 = 48,271 */
+    uint32_t rem = *state % (N / G);  /* max : 2,147,483,646 % 44,488 = 44,487 */
+
+    uint32_t a = rem * G;        /* max : 44,487 * 48,271 = 2,147,431,977 */
+    uint32_t b = div * (N % G);  /* max : 48,271 * 3,399 = 164,073,129 */
+
+    return *state = (a > b) ? (a - b) : (a + (N - b));
+}
+
+uint32_t next_random(void) {
+    return lcg_parkmiller(&__random_seed);
 }

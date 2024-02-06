@@ -6,11 +6,13 @@
 #include <led.h>
 #include <timer.h>
 
-#define SAMPLE_BUFFER_LEN 512
+#define SAMPLE_BUFFER_LEN 128
 #define SAMPLING_PERIOD_MS 3000
+#define ACTION_LIMIT 1000
 
 tock_timer_t audio_sampling_timer;
 
+int actions = 0;
 bool audio_pending;
 uint16_t samples[SAMPLE_BUFFER_LEN];
 
@@ -24,21 +26,27 @@ uint32_t lcg_parkmiller(uint32_t* state);
 
 int main(void)
 {
-    /* printf("starting loudness\n"); */
+    delay_ms(400);
     audio_pending = false;
     check_return_code(
         adc_set_buffer(samples, SAMPLE_BUFFER_LEN),
         "adc_set_buffer");
     check_return_code(
-        adc_set_buffered_sample_callback(audio_buffer_filled, NULL),
-        "adc_set_buffered_sample_callback");
+        adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
+        "adc_set_buffered_sample_callback"); // 204961
+    /* printf("audio_buffer_filled = %lu\n", &audio_buffer_filled); */
 
-    while (true)
+    timer_every(SAMPLING_PERIOD_MS - 375 + (next_random() % 750),
+                audio_sampling_timer_fired,
+                NULL,
+                &audio_sampling_timer);
+
+    while (actions++ < ACTION_LIMIT)
     {
-        timer_in(SAMPLING_PERIOD_MS - 375 + (next_random() % 750),
-                 audio_sampling_timer_fired,
-                 NULL,
-                 &audio_sampling_timer);
+        /* timer_in(SAMPLING_PERIOD_MS - 375 + (next_random() % 750), */
+        /*          audio_sampling_timer_fired, */
+        /*          NULL, */
+        /*          &audio_sampling_timer); */
 
         // Wait until we have collected the audio.
         while (!audio_pending) { yield(); }
@@ -63,11 +71,11 @@ int main(void)
 
         if (avg_loudness > 20000.0)
         {
-            led_on(0);
+            /* led_on(0); */
         }
         else
         {
-            led_off(0);
+            /* led_off(0); */
         }
 
         // Mark the buffer as ready to hold new data.
@@ -93,10 +101,11 @@ void audio_sampling_timer_fired(__attribute__ ((unused)) int a1,
 {
     /* printf("sampling timer fired\n"); */
     const uint8_t channel = 0;
-    const uint32_t sampling_frequency = 5120;
+    const uint32_t sampling_frequency = 2560;
 
     if (!audio_pending)
     {
+        /* printf("Triggering audio sampling.\n"); */
         /* check_return_code( */
         /*     adc_buffered_sample(channel, sampling_frequency), */
         /*     "adc_buffered_sample"); */
@@ -111,27 +120,28 @@ void audio_buffer_filled(__attribute__ ((unused)) uint8_t channel_no,
                          __attribute__ ((unused)) uint16_t* buffer,
                          __attribute__ ((unused)) void* a4)
 {
+    /* printf("audio callback %ld!!!\n", *(uint32_t*) a4); */
     audio_pending = true;
 
     return;
 }
 
-uint32_t lcg_parkmiller(uint32_t *state)
-{
-    const uint32_t N = 0x7fffffff;
-    const uint32_t G = 48271u;
+/* uint32_t lcg_parkmiller(uint32_t *state) */
+/* { */
+/*     const uint32_t N = 0x7fffffff; */
+/*     const uint32_t G = 48271u; */
 
-    uint32_t div = *state / (N / G);  /* max : 2,147,483,646 / 44,488 = 48,271 */
-    uint32_t rem = *state % (N / G);  /* max : 2,147,483,646 % 44,488 = 44,487 */
+/*     uint32_t div = *state / (N / G);  /\* max : 2,147,483,646 / 44,488 = 48,271 *\/ */
+/*     uint32_t rem = *state % (N / G);  /\* max : 2,147,483,646 % 44,488 = 44,487 *\/ */
 
-    uint32_t a = rem * G;        /* max : 44,487 * 48,271 = 2,147,431,977 */
-    uint32_t b = div * (N % G);  /* max : 48,271 * 3,399 = 164,073,129 */
+/*     uint32_t a = rem * G;        /\* max : 44,487 * 48,271 = 2,147,431,977 *\/ */
+/*     uint32_t b = div * (N % G);  /\* max : 48,271 * 3,399 = 164,073,129 *\/ */
 
-    return *state = (a > b) ? (a - b) : (a + (N - b));
-}
+/*     return *state = (a > b) ? (a - b) : (a + (N - b)); */
+/* } */
 
-uint32_t __random_seed = 0x28d7dda8;
+/* uint32_t __random_seed = 0x28d7dda8; */
 
-uint32_t next_random(void) {
-    return lcg_parkmiller(&__random_seed);
-}
+/* uint32_t next_random(void) { */
+/*     return lcg_parkmiller(&__random_seed); */
+/* } */
