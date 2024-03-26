@@ -177,8 +177,9 @@ void timer_every(uint32_t ms, subscribe_upcall cb, void* ud, tock_timer_t* repea
   /* alarm_at(now, interval, (subscribe_upcall*)repeating_upcall, */
   /*          (void*)repeating, &repeating->alarm); */
 
+  const uint32_t jittered_delay = interval - (interval / 20) + (next_random() % (interval / 10));
   alarm_at(now,
-           interval - (interval / 20) + (next_random() % (interval / 10)),
+           jittered_delay,
            /* interval, */
            (subscribe_upcall*)repeating_upcall,
            (void*)repeating,

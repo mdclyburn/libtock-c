@@ -47,7 +47,8 @@ int main(void)
                 &sensing_timer);
 
     /* while (actions <= ACTION_LIMIT) { yield(); } */
-    while (actions++ <= ACTION_LIMIT)
+    /* while (actions++ <= ACTION_LIMIT) */
+    while (true)
     {
         readings.count = 0;
 
@@ -57,10 +58,12 @@ int main(void)
         /*          &sensing_timer); */
 
         // Wait until we have all data available.
+        /* printf("waiting for readings...\n"); */
         while (readings.count < 1) { yield(); }
 
         // Pack the data for encryption and later sending.
         // We encrypt the data once we have reached a certain amount of data.
+        /* printf("encrypting\n"); */
         aes_do_something();
     }
 

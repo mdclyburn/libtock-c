@@ -36,10 +36,12 @@ int main(void)
         "adc_set_buffered_sample_callback"); // 204961
     /* printf("audio_buffer_filled = %lu\n", &audio_buffer_filled); */
 
-    timer_every(SAMPLING_PERIOD_MS - 375 + (next_random() % 750),
+    const uint32_t delay = SAMPLING_PERIOD_MS - 100 + (next_random() % 200);
+    timer_every(delay,
                 audio_sampling_timer_fired,
                 NULL,
                 &audio_sampling_timer);
+    /* printf("delay: %ld\n", delay); */
 
     while (actions++ < ACTION_LIMIT)
     {

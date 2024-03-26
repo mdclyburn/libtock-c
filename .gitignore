@@ -1,2 +1,4 @@
 build/
 .vscode/
+*.tab
+libtock-c/
