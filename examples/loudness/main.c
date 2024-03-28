@@ -8,7 +8,7 @@
 
 #define SAMPLE_BUFFER_LEN 128
 #define SAMPLING_PERIOD_MS 3000
-#define ACTION_LIMIT 1000
+#define ACTION_LIMIT 6
 
 tock_timer_t audio_sampling_timer;
 

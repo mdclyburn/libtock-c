@@ -4,7 +4,7 @@
 #include <timer.h>
 
 #define UPDATE_PERIOD_MS 1000
-#define ACTION_LIMIT 1000
+#define ACTION_LIMIT 18
 
 tock_timer_t display_update_timer;
 int actions = 0;
