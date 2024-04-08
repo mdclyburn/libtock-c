@@ -31,15 +31,16 @@ int main(void)
 
     while (true)
     {
-	    /* printf("i"); */
+	    printf("i");
 
-		delay_ms(SAMPLING_PERIOD_MS);
+		/* delay_ms(SAMPLING_PERIOD_MS); */
 
-        check_return_code(
-			adc_buffered_sample(0, 2560),
-			"buffered sample");
+        /* check_return_code( */
+		/* 	adc_buffered_sample(0, 2560), */
+		/* 	"buffered sample"); */
+		adc_buffered_sample(0, 2560);
 
-		delay_ms(SAMPLING_PERIOD_MS);
+		delay_ms(SAMPLING_PERIOD_MS * 2);
     }
 
     return 0;
