@@ -31,7 +31,7 @@ int main(void)
 
     while (true)
     {
-	    printf("i");
+	    /* printf("i"); */
 
 		delay_ms(SAMPLING_PERIOD_MS);
 
