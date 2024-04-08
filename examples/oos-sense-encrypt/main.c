@@ -33,14 +33,14 @@ int main(void)
     {
 	    printf("i");
 
-		/* delay_ms(SAMPLING_PERIOD_MS); */
+		delay_ms(SAMPLING_PERIOD_MS * 2);
 
         /* check_return_code( */
 		/* 	adc_buffered_sample(0, 2560), */
 		/* 	"buffered sample"); */
-		adc_buffered_sample(0, 2560);
+		/* adc_buffered_sample(0, 2560); */
 
-		delay_ms(SAMPLING_PERIOD_MS * 2);
+		/* delay_ms(SAMPLING_PERIOD_MS * 2); */
     }
 
     return 0;
