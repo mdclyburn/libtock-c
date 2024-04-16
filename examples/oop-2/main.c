@@ -16,6 +16,7 @@
 
 #define SAMPLE_BUFFER_LEN 64
 #define WAIT_PERIOD_MS 1000
+#define ACTION_LIMIT 28
 
 uint16_t samples[SAMPLE_BUFFER_LEN];
 
@@ -36,7 +37,8 @@ int main(void)
 	printf("oop-2: pre-delay = %ld\n", pre_delay);
 	delay_ms(pre_delay);
 
-    while (true)
+	uint32_t actions = 0;
+    while (actions++ < ACTION_LIMIT)
     {
 	    printf("i");
 		delay_ms(WAIT_PERIOD_MS);

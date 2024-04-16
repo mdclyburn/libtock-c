@@ -17,6 +17,7 @@
 
 #define SAMPLE_BUFFER_LEN 128
 #define WAIT_PERIOD_MS 1000
+#define ACTION_LIMIT 28
 
 uint16_t samples[SAMPLE_BUFFER_LEN];
 
@@ -33,7 +34,8 @@ int main(void)
         adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
         "adc_set_buffered_sample_callback");
 
-    while (true)
+	uint32_t actions = 0;
+    while (actions++ < ACTION_LIMIT)
     {
 		adc_buffered_sample(0, 2560);
 		delay_ms(WAIT_PERIOD_MS);
