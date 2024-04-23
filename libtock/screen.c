@@ -348,3 +348,27 @@ int screen_write (size_t length) {
   }
   return ret;
 }
+
+int screen_reset(void)
+{
+    syscall_return_t rval = command(
+        DRIVER_NUM_SCREEN,
+        1, 0, 0);
+    return tock_command_return_novalue_to_returncode(rval);
+}
+
+int screen_refresh(void)
+{
+    syscall_return_t rval = command(
+        DRIVER_NUM_SCREEN,
+        2, 0, 0);
+    return tock_command_return_novalue_to_returncode(rval);
+}
+
+int screen_bah(void)
+{
+    syscall_return_t rval = command(
+        DRIVER_NUM_SCREEN,
+        3, 0, 0);
+    return tock_command_return_novalue_to_returncode(rval);
+}

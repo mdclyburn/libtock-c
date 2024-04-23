@@ -57,6 +57,11 @@ int screen_set_frame (uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 int screen_fill (size_t color);
 int screen_write (size_t length);
 
+// science
+	int screen_reset(void);
+	int screen_refresh(void);
+	int screen_bah(void);
+
 #ifdef __cplusplus
 }
 #endif
