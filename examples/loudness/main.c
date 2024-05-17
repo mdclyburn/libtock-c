@@ -3,97 +3,103 @@
 #include <stdio.h>
 
 #include <adc.h>
+#include <evaluation.h>
 #include <led.h>
 #include <timer.h>
 
 #define SAMPLE_BUFFER_LEN 128
 #define SAMPLING_PERIOD_MS 3000
+#define SAMPLING_JITTER_MS ( SAMPLING_PERIOD_MS / 10 )
 #define ACTION_LIMIT 1000
+#define THRESHOLD_STATE_LEN 5
 
 tock_timer_t audio_sampling_timer;
 
-int actions = 0;
-bool audio_pending;
+bool audio_pending = false;
 uint16_t samples[SAMPLE_BUFFER_LEN];
-
-void check_return_code(int, const char* const);
 
 void audio_sampling_timer_fired(int, int, int, void*);
 void audio_buffer_filled(uint8_t, uint32_t, uint16_t*, void*);
 
-uint32_t next_random(void);
-uint32_t lcg_parkmiller(uint32_t* state);
-
 int main(void)
 {
-    delay_ms(400);
-    audio_pending = false;
-    check_return_code(
+    eval_setup();
+
+    eval_check_return_code(
         adc_set_buffer(samples, SAMPLE_BUFFER_LEN),
         "adc_set_buffer");
-    check_return_code(
+    eval_check_return_code(
         adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
-        "adc_set_buffered_sample_callback"); // 204961
-    /* printf("audio_buffer_filled = %lu\n", &audio_buffer_filled); */
+        "adc_set_buffered_sample_callback");
 
-    const uint32_t delay = SAMPLING_PERIOD_MS - 100 + (next_random() % 200);
-    timer_every(delay,
+    const int8_t jitter = ((int8_t) (eval_usprng_next() % (SAMPLING_JITTER_MS / 2))) - SAMPLING_JITTER_MS;
+    timer_every(SAMPLING_PERIOD_MS + jitter,
                 audio_sampling_timer_fired,
                 NULL,
                 &audio_sampling_timer);
-    /* printf("delay: %ld\n", delay); */
+
+    uint16_t baseline = 0xFFFF;
+    int actions = 0;
+    bool threshold_exceeded[THRESHOLD_STATE_LEN];
+    uint16_t threshold_exceeded_i = 0;
+
+    for (uint16_t i = 0; i < THRESHOLD_STATE_LEN; i++)
+        threshold_exceeded[i] = false;
 
     while (actions++ < ACTION_LIMIT)
     {
-        /* timer_in(SAMPLING_PERIOD_MS - 375 + (next_random() % 750), */
-        /*          audio_sampling_timer_fired, */
-        /*          NULL, */
-        /*          &audio_sampling_timer); */
 
         // Wait until we have collected the audio.
         while (!audio_pending) { yield(); }
 
-        // Process the audio data.
-        // See if it crosses the loudness threshold.
-        float avg_loudness = 0.0;
-        for (uint32_t i = 0; i < SAMPLE_BUFFER_LEN; i++)
+        if (baseline == 0xFFFF) // Need to capture a baseline.
         {
-            float sample;
-            if (samples[i] >= 32768)
-            {
-                sample = (float) samples[i] - 32768.0;
-            }
-            else
-            {
-                sample = 32768.0 - (float) samples[i];
-            }
-
-            avg_loudness += sample / (float) SAMPLE_BUFFER_LEN;
-        }
-
-        if (avg_loudness > 20000.0)
-        {
-            /* led_on(0); */
+            // Assume what we have now is the baseline.
+            uint32_t total = 0;
+            for (uint32_t i = 0; i < SAMPLE_BUFFER_LEN; i++)
+                total += samples[i];
+            total /= SAMPLE_BUFFER_LEN;
         }
         else
         {
-            /* led_off(0); */
+            // Process the audio data.
+            // See if it crosses the level threshold.
+            float avg_level = 0.0;
+            for (uint32_t i = 0; i < SAMPLE_BUFFER_LEN; i++)
+            {
+                float sample;
+                avg_level += sample / (float) SAMPLE_BUFFER_LEN;
+            }
+
+            if (avg_level > 20000.0)
+            {
+                threshold_exceeded[threshold_exceeded_i++] = true;
+                // Check if threshold has been exceeded enough times.
+                uint8_t count = 0;
+                for (uint16_t i = 0; i < THRESHOLD_STATE_LEN; i++)
+                {
+                    if (threshold_exceeded[i])
+                        count++;
+                }
+
+                if (count == THRESHOLD_STATE_LEN)
+                {
+                    // Notify.
+
+                    // Clear buffer.
+                    for (uint16_t i = 0; i < THRESHOLD_STATE_LEN; i++)
+                        threshold_exceeded[i] = false;
+                }
+            }
+            else
+            {
+                threshold_exceeded[threshold_exceeded_i++] = false;
+            }
         }
 
         // Mark the buffer as ready to hold new data.
         audio_pending = false;
     }
-}
-
-void check_return_code(const int rc, const char* const note)
-{
-    if (rc != RETURNCODE_SUCCESS)
-    {
-        printf("loudness: non-zero return code (%s)\n", note);
-        while (true) { yield(); }
-    }
-
-    return;
 }
 
 void audio_sampling_timer_fired(__attribute__ ((unused)) int a1,
@@ -127,23 +133,3 @@ void audio_buffer_filled(__attribute__ ((unused)) uint8_t channel_no,
 
     return;
 }
-
-/* uint32_t lcg_parkmiller(uint32_t *state) */
-/* { */
-/*     const uint32_t N = 0x7fffffff; */
-/*     const uint32_t G = 48271u; */
-
-/*     uint32_t div = *state / (N / G);  /\* max : 2,147,483,646 / 44,488 = 48,271 *\/ */
-/*     uint32_t rem = *state % (N / G);  /\* max : 2,147,483,646 % 44,488 = 44,487 *\/ */
-
-/*     uint32_t a = rem * G;        /\* max : 44,487 * 48,271 = 2,147,431,977 *\/ */
-/*     uint32_t b = div * (N % G);  /\* max : 48,271 * 3,399 = 164,073,129 *\/ */
-
-/*     return *state = (a > b) ? (a - b) : (a + (N - b)); */
-/* } */
-
-/* uint32_t __random_seed = 0x28d7dda8; */
-
-/* uint32_t next_random(void) { */
-/*     return lcg_parkmiller(&__random_seed); */
-/* } */
