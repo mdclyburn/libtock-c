@@ -24,12 +24,20 @@ tock_timer_t g_gsr_timer;
 #define GSR_SAMPLES_LEN 10
 uint16_t g_gsr_samples[GSR_SAMPLES_LEN];
 
+enum ReadingStatus {
+    R_EMPTY,
+    R_PENDING,
+    R_DONE
+};
+
 struct
 {
-    uint8_t count;
     int temperature;
     uint16_t gsr_result;
 } g_current_readings;
+
+enum ReadingStatus g_temperature_status;
+enum ReadingStatus g_gsr_status;
 
 struct reading {
     int temperature;
@@ -44,6 +52,8 @@ void temperature_timer_fired(int, int, int, void*);
 
 void gsr_sampling_completed(uint8_t, uint32_t, uint16_t*, void*);
 void temperature_reading_completed(int, int, int, void*);
+
+bool is_ready(void);
 
 int main(void)
 {
@@ -70,12 +80,14 @@ int main(void)
                 &g_gsr_timer);
 
     uint16_t reading_i = 0;
+    g_temperature_status = R_EMPTY;
+    g_gsr_status = R_EMPTY;
     while (g_actions++ <= ACTION_LIMIT)
     {
-        g_current_readings.count = 0;
+        g_temperature_status = R_EMPTY;
+        g_gsr_status = R_EMPTY;
 
-        // Wait until we have all data available.
-        while (g_current_readings.count < 2) { yield(); }
+        while (!is_ready()) { yield(); }
 
         // Pack the data for encryption and later sending.
         g_readings[reading_i].temperature = g_current_readings.temperature;
@@ -85,6 +97,7 @@ int main(void)
         reading_i = (reading_i + 1) % READINGS_BUFFER_LEN;
         if (reading_i == 0)
         {
+            printf("encrypting\n");
             aes_do_something();
         }
     }
@@ -97,11 +110,21 @@ int main(void)
     return 0;
 }
 
+bool is_ready(void)
+{
+    return (g_temperature_status == R_DONE)
+        && (g_gsr_status == R_DONE);
+}
+
 void temperature_timer_fired(__attribute__ ((unused)) int a1,
                          __attribute__ ((unused)) int a2,
                          __attribute__ ((unused)) int a3,
                          __attribute__ ((unused)) void* a4)
 {
+    if (g_temperature_status != R_EMPTY)
+        return;
+
+    g_temperature_status = R_PENDING;
     eval_check_return_code(temperature_read(),
                            "biometrics: temperature_read");
 
@@ -116,11 +139,15 @@ void gsr_timer_fired(__attribute__ ((unused)) int a1,
                      __attribute__ ((unused)) int a3,
                      __attribute__ ((unused)) void* a4)
 {
+    if (g_gsr_status != R_EMPTY)
+        return;
+
     while (true)
     {
         int rc = adc_buffered_sample(GSR_SAMPLING_CHANNEL, GSR_SAMPLING_FREQ);
         if (rc == 0)
         {
+            g_gsr_status = R_PENDING;
             break;
         }
 
@@ -137,7 +164,8 @@ void temperature_reading_completed(int temperature,
                                    __attribute__ ((unused)) void* a4)
 {
     g_current_readings.temperature = temperature;
-    g_current_readings.count++;
+    printf("temperature callback\n");
+    g_temperature_status = R_DONE;
 
     return;
 }
@@ -147,6 +175,7 @@ void gsr_sampling_completed(__attribute__ ((unused)) uint8_t channel_no,
                             uint16_t* buffer,
                             __attribute__ ((unused)) void* a4)
 {
+    printf("gsr timer\n");
     // Buffer already filled.
     // Average samples together.
     g_current_readings.gsr_result = 0;
@@ -154,7 +183,8 @@ void gsr_sampling_completed(__attribute__ ((unused)) uint8_t channel_no,
         g_current_readings.gsr_result += buffer[i];
     g_current_readings.gsr_result /= GSR_SAMPLES_LEN;
 
-    g_current_readings.count++;
+    printf("gsr callback\n");
+    g_gsr_status = R_DONE;
 
     return;
 }
