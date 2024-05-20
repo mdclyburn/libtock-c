@@ -1,116 +1,132 @@
-/** biometrics - Periodically sense "biometric" data and encrypt it for eventual sending.
+/** biometrics - Periodically sense temperature and EDA and encrypt it for sending.
  */
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
+#include <adc.h>
 #include <aes.h>
+#include <evaluation.h>
 #include <humidity.h>
 #include <temperature.h>
 #include <timer.h>
 
-#define SAMPLING_PERIOD_MS 2000
+#define TEMPERATURE_SAMPLING_PERIOD_MS 2000
+#define GSR_SAMPLING_PERIOD_MS (TEMPERATURE_SAMPLING_PERIOD_MS) * 2
+
 #define ACTION_LIMIT 1000
 
-int actions = 0;
-tock_timer_t sensing_timer;
+int g_actions = 0;
+
+tock_timer_t g_temperature_timer;
+tock_timer_t g_gsr_timer;
+
+#define GSR_SAMPLES_LEN 10
+uint16_t g_gsr_samples[GSR_SAMPLES_LEN];
 
 struct
 {
     uint8_t count;
     int temperature;
-    int humidity;
-} readings;
+    uint16_t gsr_result;
+} g_current_readings;
 
-void check_return_code(int);
+struct reading {
+    int temperature;
+    int gsr;
+};
 
-void sensing_timer_fired(int, int, int, void*);
+#define READINGS_BUFFER_LEN 10
+struct reading g_readings[READINGS_BUFFER_LEN];
 
-void humidity_reading_completed(int, int, int, void*);
+void gsr_timer_fired(int, int, int, void*);
+void temperature_timer_fired(int, int, int, void*);
+
+void gsr_sampling_completed(uint8_t, uint32_t, uint16_t*, void*);
 void temperature_reading_completed(int, int, int, void*);
-
-uint32_t next_random(void);
-uint32_t lcg_parkmiller(uint32_t* state);
 
 int main(void)
 {
-    /* printf("i"); */
-    humidity_set_callback(humidity_reading_completed, NULL);
-    temperature_set_callback(temperature_reading_completed, NULL);
+    eval_setup();
 
-    /* int count = 0; */
-    /* uint32_t sampling_period_ms = 2000 - 375 + (next_random() % 750); */
-    timer_every(SAMPLING_PERIOD_MS,
-                sensing_timer_fired,
+    eval_check_return_code(
+        temperature_set_callback(temperature_reading_completed, NULL),
+        "biometrics: temperature_set_callback");
+    eval_check_return_code(
+        adc_set_buffer(g_gsr_samples, GSR_SAMPLES_LEN),
+        "biometrics: adc_set_buffer");
+    eval_check_return_code(
+        adc_set_buffered_sample_callback(&gsr_sampling_completed, NULL),
+        "biometrics: adc_set_buffered_sample_callbck");
+
+    timer_every(TEMPERATURE_SAMPLING_PERIOD_MS,
+                temperature_timer_fired,
                 NULL,
-                &sensing_timer);
+                &g_temperature_timer);
 
-    /* while (actions <= ACTION_LIMIT) { yield(); } */
-    /* while (actions++ <= ACTION_LIMIT) */
-    while (true)
+    timer_every(GSR_SAMPLING_PERIOD_MS,
+                gsr_timer_fired,
+                NULL,
+                &g_gsr_timer);
+
+    uint16_t reading_i = 0;
+    while (g_actions++ <= ACTION_LIMIT)
     {
-        readings.count = 0;
-
-        /* timer_in(SAMPLING_PERIOD_MS - 375 + (next_random() % 750), */
-        /*          sensing_timer_fired, */
-        /*          NULL, */
-        /*          &sensing_timer); */
+        g_current_readings.count = 0;
 
         // Wait until we have all data available.
-        /* printf("waiting for readings...\n"); */
-        while (readings.count < 1) { yield(); }
+        while (g_current_readings.count < 2) { yield(); }
 
         // Pack the data for encryption and later sending.
+        g_readings[reading_i].temperature = g_current_readings.temperature;
+        g_readings[reading_i].gsr = g_current_readings.gsr_result;
+
         // We encrypt the data once we have reached a certain amount of data.
-        /* printf("encrypting\n"); */
-        aes_do_something();
+        reading_i = (reading_i + 1) % READINGS_BUFFER_LEN;
+        if (reading_i == 0)
+        {
+            aes_do_something();
+        }
     }
 
-    timer_cancel(&sensing_timer);
+    timer_cancel(&g_temperature_timer);
+    timer_cancel(&g_gsr_timer);
 
     while (true) { yield(); }
 
     return 0;
 }
 
-void check_return_code(const int rc)
-{
-    if (rc != RETURNCODE_SUCCESS)
-    {
-        printf("biometrics: non-zero return code\n");
-        while (true) { yield(); }
-    }
-
-    return;
-}
-
-void sensing_timer_fired(__attribute__ ((unused)) int a1,
+void temperature_timer_fired(__attribute__ ((unused)) int a1,
                          __attribute__ ((unused)) int a2,
                          __attribute__ ((unused)) int a3,
                          __attribute__ ((unused)) void* a4)
 {
-    actions++;
-    /* if (temperature_read() != RETURNCODE_SUCCESS) */
-    /* { */
-    /*     /\* printf("temp read failed\n"); *\/ */
-    /* } */
-
-    if (humidity_read() != RETURNCODE_SUCCESS)
-    {
-        /* printf("hum read failed\n"); */
-    }
+    eval_check_return_code(temperature_read(),
+                           "biometrics: temperature_read");
 
     return;
 }
 
-void humidity_reading_completed(int humidity,
-                                __attribute__ ((unused)) int a2,
-                                __attribute__ ((unused)) int a3,
-                                __attribute__ ((unused)) void* a4)
+#define GSR_SAMPLING_CHANNEL 1
+#define GSR_SAMPLING_FREQ 4
+
+void gsr_timer_fired(__attribute__ ((unused)) int a1,
+                     __attribute__ ((unused)) int a2,
+                     __attribute__ ((unused)) int a3,
+                     __attribute__ ((unused)) void* a4)
 {
-    readings.humidity = humidity;
-    readings.count++;
+    while (true)
+    {
+        int rc = adc_buffered_sample(GSR_SAMPLING_CHANNEL, GSR_SAMPLING_FREQ);
+        if (rc == 0)
+        {
+            break;
+        }
+
+        // Try again soon.
+        delay_ms(100);
+    }
 
     return;
 }
@@ -120,28 +136,25 @@ void temperature_reading_completed(int temperature,
                                    __attribute__ ((unused)) int a3,
                                    __attribute__ ((unused)) void* a4)
 {
-    readings.temperature = temperature;
-    readings.count++;
+    g_current_readings.temperature = temperature;
+    g_current_readings.count++;
 
     return;
 }
 
-/* uint32_t lcg_parkmiller(uint32_t *state) */
-/* { */
-/*     const uint32_t N = 0x7fffffff; */
-/*     const uint32_t G = 48271u; */
+void gsr_sampling_completed(__attribute__ ((unused)) uint8_t channel_no,
+                            __attribute__ ((unused)) uint32_t sample_count,
+                            uint16_t* buffer,
+                            __attribute__ ((unused)) void* a4)
+{
+    // Buffer already filled.
+    // Average samples together.
+    g_current_readings.gsr_result = 0;
+    for (uint8_t i = 0; i < GSR_SAMPLES_LEN; i++)
+        g_current_readings.gsr_result += buffer[i];
+    g_current_readings.gsr_result /= GSR_SAMPLES_LEN;
 
-/*     uint32_t div = *state / (N / G);  /\* max : 2,147,483,646 / 44,488 = 48,271 *\/ */
-/*     uint32_t rem = *state % (N / G);  /\* max : 2,147,483,646 % 44,488 = 44,487 *\/ */
+    g_current_readings.count++;
 
-/*     uint32_t a = rem * G;        /\* max : 44,487 * 48,271 = 2,147,431,977 *\/ */
-/*     uint32_t b = div * (N % G);  /\* max : 48,271 * 3,399 = 164,073,129 *\/ */
-
-/*     return *state = (a > b) ? (a - b) : (a + (N - b)); */
-/* } */
-
-/* uint32_t __random_seed = 0x28d7dda8; */
-
-/* uint32_t next_random(void) { */
-/*     return lcg_parkmiller(&__random_seed); */
-/* } */
+    return;
+}
