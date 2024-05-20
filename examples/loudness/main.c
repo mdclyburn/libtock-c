@@ -27,10 +27,10 @@ int main(void)
 
     eval_check_return_code(
         adc_set_buffer(samples, SAMPLE_BUFFER_LEN),
-        "adc_set_buffer");
+        "loudness: adc_set_buffer");
     eval_check_return_code(
         adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
-        "adc_set_buffered_sample_callback");
+        "loudness: adc_set_buffered_sample_callback");
 
     const int8_t jitter = ((int8_t) (eval_usprng_next() % (SAMPLING_JITTER_MS / 2))) - SAMPLING_JITTER_MS;
     timer_every(SAMPLING_PERIOD_MS + jitter,
@@ -113,11 +113,14 @@ void audio_sampling_timer_fired(__attribute__ ((unused)) int a1,
 
     if (!audio_pending)
     {
-        /* printf("Triggering audio sampling.\n"); */
-        /* check_return_code( */
-        /*     adc_buffered_sample(channel, sampling_frequency), */
-        /*     "adc_buffered_sample"); */
-        adc_buffered_sample(channel, sampling_frequency);
+        while (true)
+        {
+            int rc = adc_buffered_sample(channel, sampling_frequency);
+            if (rc == 0)
+                break;
+
+            delay_ms(100);
+        }
     }
 
     return;
@@ -128,7 +131,6 @@ void audio_buffer_filled(__attribute__ ((unused)) uint8_t channel_no,
                          __attribute__ ((unused)) uint16_t* buffer,
                          __attribute__ ((unused)) void* a4)
 {
-    /* printf("audio callback %ld!!!\n", *(uint32_t*) a4); */
     audio_pending = true;
 
     return;
