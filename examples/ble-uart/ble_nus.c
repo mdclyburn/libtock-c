@@ -10,6 +10,8 @@
  *
  */
 
+#include <stdio.h>
+
 #include "ble_nus.h"
 #include "ble_srv_common.h"
 #include "sdk_common.h"
@@ -74,6 +76,7 @@ static void on_write(ble_nus_t * p_nus, ble_evt_t * p_ble_evt)
   }
 }
 
+static uint8_t DATA_BUF[16];
 
 /**@brief Function for adding RX characteristic.
  *
@@ -102,14 +105,16 @@ static uint32_t rx_char_add(ble_nus_t * p_nus, const ble_nus_init_t * p_nus_init
   memset(&char_md, 0, sizeof(char_md));
 
   char_md.char_props.notify = 1;
+  char_md.char_props.read   = 1;
+  char_md.char_props.write  = 1;
   char_md.p_char_user_desc  = NULL;
   char_md.p_char_pf         = NULL;
   char_md.p_user_desc_md    = NULL;
   char_md.p_cccd_md         = &cccd_md;
   char_md.p_sccd_md         = NULL;
 
-  ble_uuid.type = p_nus->uuid_type;
-  ble_uuid.uuid = BLE_UUID_NUS_RX_CHARACTERISTIC;
+  ble_uuid.type = 0x01;
+  ble_uuid.uuid = 0x000A;
 
   memset(&attr_md, 0, sizeof(attr_md));
 
@@ -117,17 +122,18 @@ static uint32_t rx_char_add(ble_nus_t * p_nus, const ble_nus_init_t * p_nus_init
   BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
 
   attr_md.vloc    = BLE_GATTS_VLOC_STACK;
-  attr_md.rd_auth = 0;
-  attr_md.wr_auth = 0;
-  attr_md.vlen    = 1;
+  attr_md.rd_auth = 1;
+  attr_md.wr_auth = 1;
+  attr_md.vlen    = 0;
 
   memset(&attr_char_value, 0, sizeof(attr_char_value));
 
   attr_char_value.p_uuid    = &ble_uuid;
   attr_char_value.p_attr_md = &attr_md;
-  attr_char_value.init_len  = sizeof(uint8_t);
+  attr_char_value.init_len  = 8;
   attr_char_value.init_offs = 0;
-  attr_char_value.max_len   = BLE_NUS_MAX_RX_CHAR_LEN;
+  attr_char_value.max_len   = 8;
+  /* attr_char_value.p_value   = DATA_BUF; */
 
   return sd_ble_gatts_characteristic_add(p_nus->service_handle,
                                          &char_md,
@@ -195,6 +201,8 @@ void ble_nus_on_ble_evt(ble_nus_t * p_nus, ble_evt_t * p_ble_evt)
   if ((p_nus == NULL) || (p_ble_evt == NULL)) {
     return;
   }
+
+  printf("event: %d\n", (int) p_ble_evt->header.evt_id);
 
   switch (p_ble_evt->header.evt_id) {
     case BLE_GAP_EVT_CONNECTED:

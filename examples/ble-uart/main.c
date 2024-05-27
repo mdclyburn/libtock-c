@@ -19,6 +19,7 @@
 
 #include "ble_nus.h"
 #include "nrf.h"
+#include "timer.h"
 
 
 /*******************************************************************************
@@ -105,12 +106,22 @@ void services_init (void) {
  ******************************************************************************/
 
 int main (void) {
-  printf("[BLE] UART over BLE\n");
+  /* printf("[BLE] UART over BLE\n"); */
 
+    delay_ms(5000);
   // Setup BLE
   conn_handle = simple_ble_init(&ble_config)->conn_handle;
 
   // Advertise the UART service
   ble_uuid_t adv_uuid = {0x0001, BLE_UUID_TYPE_VENDOR_BEGIN};
   simple_adv_service(&adv_uuid);
+
+  simple_ble_char_t dc;
+  dc.uuid16 = 0x000A;
+
+  while (true)
+  {
+      printf("notify result: %lu\n", simple_ble_notify_char(&dc));
+      delay_ms(1000);
+  }
 }
