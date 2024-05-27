@@ -14,7 +14,7 @@ void update_display(int, int, int, void*);
 int main(void)
 {
     /* led_off(0); */
-    /* printf("i"); */
+    printf("i");
     timer_in(UPDATE_PERIOD_MS, update_display, NULL, &display_update_timer);
 
     while (true) { yield(); }
