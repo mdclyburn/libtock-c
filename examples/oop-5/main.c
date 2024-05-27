@@ -1,7 +1,7 @@
-/** oop-2
+/** oop-1
  *
- * The shifting timed application.
- * Uses UART.
+ * The "stable" timed application.
+ * Uses the ADC.
  */
 
 #include <stdbool.h>
@@ -10,6 +10,7 @@
 
 #include <adc.h>
 #include <aes.h>
+#include <alarm.h>
 #include <humidity.h>
 #include <rng.h>
 #include <temperature.h>
@@ -27,26 +28,17 @@ void audio_buffer_filled(uint8_t, uint32_t, uint16_t*, void*);
 
 int main(void)
 {
-    check_return_code(
-        adc_set_buffer(samples, SAMPLE_BUFFER_LEN),
-        "adc_set_buffer");
-    check_return_code(
-        adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
-        "adc_set_buffered_sample_callback");
-
-
 	int nr;
 	uint32_t pre_delay;
 	rng_sync((uint8_t*) &pre_delay, 4, 4, &nr);
-	printf("oop-2: rng: %lu\n", pre_delay % 1000);
+	printf("oop-5: rng: %lu\n", pre_delay % 1000);
 	/* printf("oop-2: pre-delay = %ld\n", pre_delay); */
 	delay_ms(pre_delay % 1000);
 
 	uint32_t actions = 0;
     while (actions++ < ACTION_LIMIT)
     {
-	    printf("i");
-		delay_ms(WAIT_PERIOD_MS);
+		aes_do_something();
     }
 
     return 0;
@@ -56,7 +48,7 @@ void check_return_code(const int rc, const char* const note)
 {
     if (rc != RETURNCODE_SUCCESS)
     {
-        printf("oop-2: non-zero return code (%s)\n", note);
+        printf("oop-1: non-zero return code (%s)\n", note);
         while (true) { yield(); }
     }
 

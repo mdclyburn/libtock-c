@@ -1,6 +1,6 @@
-/** oop-2
+/** oop-4
  *
- * The shifting timed application.
+ * Another time-shifting application.
  * Uses UART.
  */
 
@@ -27,25 +27,22 @@ void audio_buffer_filled(uint8_t, uint32_t, uint16_t*, void*);
 
 int main(void)
 {
-    check_return_code(
-        adc_set_buffer(samples, SAMPLE_BUFFER_LEN),
-        "adc_set_buffer");
-    check_return_code(
-        adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
-        "adc_set_buffered_sample_callback");
-
 
 	int nr;
 	uint32_t pre_delay;
 	rng_sync((uint8_t*) &pre_delay, 4, 4, &nr);
-	printf("oop-2: rng: %lu\n", pre_delay % 1000);
+	printf("oop-4: rng: %lu\n", pre_delay % 1000);
 	/* printf("oop-2: pre-delay = %ld\n", pre_delay); */
 	delay_ms(pre_delay % 1000);
 
 	uint32_t actions = 0;
     while (actions++ < ACTION_LIMIT)
     {
-	    printf("i");
+		int temp;
+		for (uint8_t i = 0; i < 5; i++)
+		{
+			int __rc = temperature_read_sync(&temp);
+		}
 		delay_ms(WAIT_PERIOD_MS);
     }
 
@@ -56,7 +53,7 @@ void check_return_code(const int rc, const char* const note)
 {
     if (rc != RETURNCODE_SUCCESS)
     {
-        printf("oop-2: non-zero return code (%s)\n", note);
+        printf("oop-4: non-zero return code (%s)\n", note);
         while (true) { yield(); }
     }
 

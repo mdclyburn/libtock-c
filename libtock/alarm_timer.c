@@ -89,6 +89,14 @@ static void callback( __attribute__ ((unused)) int   unused0,
   }
 }
 
+uint32_t alarm_read(void)
+{
+    uint32_t val;
+    alarm_internal_read(&val);
+
+    return val;
+}
+
 int alarm_at(uint32_t reference, uint32_t dt, subscribe_upcall cb, void* ud, alarm_t* alarm) {
   alarm->reference = reference;
   alarm->dt        = dt;

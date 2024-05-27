@@ -58,9 +58,15 @@ int screen_fill (size_t color);
 int screen_write (size_t length);
 
 // science
+	#define SCREEN_REFRESH_FULL 0
+	#define SCREEN_REFRESH_FAST 1
+	#define SCREEN_REFERSH_PARTIAL 2
+
 	int screen_reset(void);
-	int screen_refresh(void);
+	int screen_refresh(const uint8_t refresh_type);
+	int screen_sleep(void);
 	int screen_bah(void);
+	int screen_update(void);
 
 #ifdef __cplusplus
 }

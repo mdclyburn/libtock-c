@@ -1,7 +1,6 @@
-/** oop-2
+/** oop-3
  *
- * The shifting timed application.
- * Uses UART.
+ * Uses SPI + eInk display.
  */
 
 #include <stdbool.h>
@@ -11,7 +10,7 @@
 #include <adc.h>
 #include <aes.h>
 #include <humidity.h>
-#include <rng.h>
+#include <screen.h>
 #include <temperature.h>
 #include <timer.h>
 
@@ -27,27 +26,35 @@ void audio_buffer_filled(uint8_t, uint32_t, uint16_t*, void*);
 
 int main(void)
 {
-    check_return_code(
-        adc_set_buffer(samples, SAMPLE_BUFFER_LEN),
-        "adc_set_buffer");
-    check_return_code(
-        adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
-        "adc_set_buffered_sample_callback");
+	uint32_t refresh_count = 0;
+	delay_ms(300);
 
+	while(true)
+	{
+		check_return_code(
+			screen_reset(),
+			"reset");
+		check_return_code(
+			screen_bah(),
+			"bah");
+		check_return_code(
+			screen_update(),
+			"update");
 
-	int nr;
-	uint32_t pre_delay;
-	rng_sync((uint8_t*) &pre_delay, 4, 4, &nr);
-	printf("oop-2: rng: %lu\n", pre_delay % 1000);
-	/* printf("oop-2: pre-delay = %ld\n", pre_delay); */
-	delay_ms(pre_delay % 1000);
+		uint8_t refresh_type;
+		if (refresh_count++ % 5 == 0)
+			refresh_type = SCREEN_REFRESH_FULL;
+		else
+			refresh_type = SCREEN_REFERSH_PARTIAL;
+		check_return_code(
+			screen_refresh(refresh_type),
+			"refresh");
+		check_return_code(
+			screen_sleep(),
+			"sleep");
 
-	uint32_t actions = 0;
-    while (actions++ < ACTION_LIMIT)
-    {
-	    printf("i");
-		delay_ms(WAIT_PERIOD_MS);
-    }
+		delay_ms(5000);
+	}
 
     return 0;
 }
@@ -56,7 +63,7 @@ void check_return_code(const int rc, const char* const note)
 {
     if (rc != RETURNCODE_SUCCESS)
     {
-        printf("oop-2: non-zero return code (%s)\n", note);
+        printf("oop-2: non-zero return code %d (%s)\n", rc, note);
         while (true) { yield(); }
     }
 

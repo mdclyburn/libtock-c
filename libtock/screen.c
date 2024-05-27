@@ -357,11 +357,27 @@ int screen_reset(void)
     return tock_command_return_novalue_to_returncode(rval);
 }
 
-int screen_refresh(void)
+int screen_refresh(const uint8_t refresh_type)
 {
     syscall_return_t rval = command(
         DRIVER_NUM_SCREEN,
-        2, 0, 0);
+        2, refresh_type, 0);
+    return tock_command_return_novalue_to_returncode(rval);
+}
+
+int screen_update(void)
+{
+    syscall_return_t rval = command(
+        DRIVER_NUM_SCREEN,
+        3, 0, 0);
+    return tock_command_return_novalue_to_returncode(rval);
+}
+
+int screen_sleep(void)
+{
+    syscall_return_t rval = command(
+        DRIVER_NUM_SCREEN,
+        100, 0, 0);
     return tock_command_return_novalue_to_returncode(rval);
 }
 
@@ -369,6 +385,6 @@ int screen_bah(void)
 {
     syscall_return_t rval = command(
         DRIVER_NUM_SCREEN,
-        3, 0, 0);
+        999, 0, 0);
     return tock_command_return_novalue_to_returncode(rval);
 }

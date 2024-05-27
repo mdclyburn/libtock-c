@@ -15,7 +15,7 @@
 #include <temperature.h>
 #include <timer.h>
 
-#define SAMPLE_BUFFER_LEN 128
+#define SAMPLE_BUFFER_LEN 64
 #define WAIT_PERIOD_MS 1000
 #define ACTION_LIMIT 28
 
