@@ -32,7 +32,7 @@ int main(void)
         adc_set_buffered_sample_callback(&audio_buffer_filled, NULL),
         "loudness: adc_set_buffered_sample_callback");
 
-    const int8_t jitter = ((int8_t) (eval_usprng_next() % (SAMPLING_JITTER_MS / 2))) - SAMPLING_JITTER_MS;
+    const int32_t jitter = ((int32_t) (eval_usprng_next() % (SAMPLING_JITTER_MS / 2))) - SAMPLING_JITTER_MS;
     timer_every(SAMPLING_PERIOD_MS + jitter,
                 audio_sampling_timer_fired,
                 NULL,
@@ -116,8 +116,9 @@ void audio_sampling_timer_fired(__attribute__ ((unused)) int a1,
         while (true)
         {
             int rc = adc_buffered_sample(channel, sampling_frequency);
-            if (rc == 0)
-                break;
+            break;
+            /* if (rc == 0) */
+                /* break; */
 
             delay_ms(100);
         }
