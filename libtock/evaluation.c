@@ -13,9 +13,9 @@ void eval_setup(void)
     // Setup pRNG.
     uint32_t rnd;
     int bytes_rcv;
-    eval_check_return_code(
-        rng_sync((uint8_t*) &rnd, 4, 4, &bytes_rcv),
-        "eval_setup, rng_sync");
+    /* eval_check_return_code( */
+    /*     rng_sync((uint8_t*) &rnd, 4, 4, &bytes_rcv), */
+    /*     "eval_setup, rng_sync"); */
     eval_usprng_init(rnd);
 
     return;
