@@ -333,7 +333,7 @@ uint32_t ser_phy_open (ser_phy_events_handler_t events_handler) {
 
     ret = nrf51_serialization_read(SER_HAL_TRANSPORT_RX_MAX_PKT_SIZE);
     if (ret < 0) return NRF_ERROR_INTERNAL;
-    
+
     // Save the callback handler
     _ser_phy_event_handler = events_handler;
 
@@ -591,8 +591,8 @@ uint32_t app_timer_cnt_diff_compute (uint32_t ticks_to,
     return NRF_SUCCESS;
 }
 
-void ser_app_power_system_off_set (void) {}
-bool ser_app_power_system_off_get (void) { return false; }
-void ser_app_power_system_off_enter (void) {}
+/* void ser_app_power_system_off_set (void) {} */
+/* bool ser_app_power_system_off_get (void) { return false; } */
+/* void ser_app_power_system_off_enter (void) {} */
 void critical_region_enter (void) {}
 void critical_region_exit (void) {}

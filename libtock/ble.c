@@ -48,3 +48,19 @@ int ble_set_tx_power(TxPower_t power_level) {
   syscall_return_t res = command(BLE_DRIVER_NUMBER, BLE_CFG_TX_POWER_CMD, power_level, 0);
   return tock_command_return_novalue_to_returncode(res);
 }
+
+int ble_reset(void) {
+	syscall_return_t res = command(BLE_DRIVER_NUMBER,
+								   BLE_RESET_CMD,
+								   0, 0);
+
+	return tock_command_return_novalue_to_returncode(res);
+}
+
+int ble_raw(int the_comm) {
+	syscall_return_t res = command(BLE_DRIVER_NUMBER,
+								   the_comm,
+								   0, 0);
+
+	return tock_command_return_novalue_to_returncode(res);
+}

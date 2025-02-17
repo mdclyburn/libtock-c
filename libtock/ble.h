@@ -20,6 +20,7 @@ extern "C" {
 #define BLE_ADV_START_CMD 0
 #define BLE_ADV_STOP_CMD 1
 #define BLE_CFG_TX_POWER_CMD 2
+#define BLE_RESET_CMD 3
 #define BLE_SCAN_CMD 5
 
 #define BLE_SCAN_SUB 0
@@ -30,7 +31,7 @@ extern "C" {
 #define ADV_IND  0x00
 #define ADV_DIRECT_IND  0x01
 #define ADV_NONCONN_IND  0x02
-#define ADV_SCAN_IND  0x06 
+#define ADV_SCAN_IND  0x06
 
 typedef enum {
   POSITIVE_10_DBM = 10,
@@ -109,6 +110,10 @@ int ble_stop_passive_scan(void);
 //                        according to Bluetooth 4.2 (-20 dBm to 10 dBm)
 //
 int ble_set_tx_power(TxPower_t power_level);
+
+int ble_reset(void);
+
+    int ble_raw(int);
 
 #ifdef __cplusplus
 }

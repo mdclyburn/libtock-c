@@ -16,7 +16,6 @@
 
 #include <console.h>
 #include <tock.h>
-#include <ble.h>
 
 #include "ble_nus.h"
 #include "nrf.h"
@@ -106,37 +105,57 @@ void services_init (void) {
  * MAIN
  ******************************************************************************/
 
-int main (void) {
-	/* printf("[BLE] UART over BLE\n"); */
+int main(void)
+{
+	printf("d\n");
 
-	while (true) {
-		delay_ms(5000);
-		printf("Reset BLE.\n");
-		/* ble_reset(); */
-		ble_raw(4);
+	while (true)
+	{
 		delay_ms(2000);
-		printf("Starting BLE.\n");
-		ble_raw(5);
 
 		// Setup BLE
 		conn_handle = simple_ble_init(&ble_config)->conn_handle;
-
-		// Advertise the UART service
 		ble_uuid_t adv_uuid = {0x0001, BLE_UUID_TYPE_VENDOR_BEGIN};
 		simple_adv_service(&adv_uuid);
 
 		simple_ble_char_t dc;
 		dc.uuid16 = 0x000A;
 
-		for (int i = 0; i < 15; i++)
-		{
-			int r = simple_ble_notify_char(&dc);
-			/* printf("notify result: %lu\n", simple_ble_notify_char(&dc)); */
-			if (r > 0) {
-				while (true) { yield(); }
-			} else {
-				delay_ms(1000);
-			}
-		}
+		/* printf("started service\n"); */
+		/* printf("notify result: %lu\n", simple_ble_notify_char(&dc)); */
+
+		delay_ms(2000);
+
+		ble_reset();
+
+		/* ser_app_power_system_off_set(); */
+		/* printf("powered off: %d\n", ); */
+
+		break;
 	}
+
+	while (true);
+
+	return 0;
+}
+
+int nomain (void) {
+  /* printf("[BLE] UART over BLE\n"); */
+
+    delay_ms(5000);
+  // Setup BLE
+  conn_handle = simple_ble_init(&ble_config)->conn_handle;
+
+  // Advertise the UART service
+  ble_uuid_t adv_uuid = {0x0001, BLE_UUID_TYPE_VENDOR_BEGIN};
+  simple_adv_service(&adv_uuid);
+
+  simple_ble_char_t dc;
+  dc.uuid16 = 0x000A;
+
+  while (true)
+  {
+      printf("notify result: %lu\n", simple_ble_notify_char(&dc));
+      delay_ms(1000);
+  }
 }

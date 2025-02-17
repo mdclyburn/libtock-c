@@ -9,9 +9,24 @@
 tock_timer_t display_update_timer;
 int actions = 0;
 
+void update_activity(void);
+
 void update_display(int, int, int, void*);
 void update_display_every(int, int, int, void*);uint32_t t_started = 0;
 uint32_t t_mark = 0;
+void update_activity(void)
+{
+	uint32_t t_now = (alarm_read() / 16000) - t_started;
+
+	if (t_now > 14640) { // sleeping
+		timer_cancel(&display_update_timer);
+	} else {
+		/* printf("no change\n"); */
+	}
+
+	return;
+}
+
 
 int main(void)
 {
