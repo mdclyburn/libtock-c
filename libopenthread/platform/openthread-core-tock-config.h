@@ -327,6 +327,8 @@
 #define OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER 0
 #endif
 
+#define OPENTHREAD_CONFIG_COAP_API_ENABLE 1
+
 /*
  * Suppress the ARMCC warning on unreachable statement,
  * e.g. break after assert(false) or ExitNow() macro.

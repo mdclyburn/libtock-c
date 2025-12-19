@@ -106,6 +106,7 @@ static libtock_ieee802154_rxbuf* swap_shared_kernel_buf(otTock* instance) {
 void otSysInit(int argc, char *argv[]){
   OT_UNUSED_VARIABLE(argc);
   OT_UNUSED_VARIABLE(argv);
+
   init_otPlatAlarm();
 }
 
@@ -121,8 +122,8 @@ bool pending_rx_done_callback_status(void) {
 }
 
 bool openthread_platform_pending_work(void){
-    return (pending_alarm_done_callback_status() || 
-            pending_tx_done_callback_status(NULL, NULL, NULL) || 
+    return (pending_alarm_done_callback_status() ||
+            pending_tx_done_callback_status(NULL, NULL, NULL) ||
             pending_rx_done_callback_status());
 }
 
@@ -156,9 +157,9 @@ void readRingBuf(otInstance *aInstance) {
         usr_rx_buffer.read_index = 0;
       }
     } while (usr_rx_buffer.read_index != usr_rx_buffer.write_index);
-    
-    usr_rx_buffer.new = false;  
-    } 
+
+    usr_rx_buffer.new = false;
+    }
 }
 
 void otSysProcessDrivers(otInstance *aInstance){
