@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "../../tock.h"
+#include "../tock.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,18 +10,24 @@ extern "C" {
 
 #define DRIVER_NUM_ISLE ((uint32_t) 0x30999)
 
+#define ISLE_COMMAND_ENCRYPT ((uint32_t) 0)
+
 #define ISLE_IN_BUFFER  ((uint32_t) 0)
-#define ISLE_OUT_BUFFER ((uint32_t) 1)
+#define ISLE_OUT_BUFFER ((uint32_t) 0)
 
 returncode_t
-libtock_isle_set_ro_allow_in_buffer(
+libtock_isle_allow_ro_set_in_buffer(
 	const uint8_t* buffer,
 	const uint32_t len);
 
 returncode_t
-libtock_isle_set_rw_allow_out_buffer(
+libtock_isle_allow_rw_set_out_buffer(
 	const uint8_t* buffer,
 	const uint32_t len);
+
+returncode_t
+libtock_isle_command_encrypt(
+	const uint32_t message_len);
 
 #ifdef __cplusplus
 }

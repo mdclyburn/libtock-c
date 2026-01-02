@@ -1,7 +1,7 @@
 #include "isle.h"
 
 returncode_t
-libtock_isle_set_ro_allow_in_buffer(
+libtock_isle_allow_ro_set_in_buffer(
 	const uint8_t* in_buffer,
 	const uint32_t len)
 {
@@ -15,7 +15,7 @@ libtock_isle_set_ro_allow_in_buffer(
 }
 
 returncode_t
-libtock_isle_set_rw_allow_out_buffer(
+libtock_isle_allow_rw_set_out_buffer(
 	const uint8_t* out_buffer,
 	const uint32_t len)
 {
@@ -26,4 +26,17 @@ libtock_isle_set_rw_allow_out_buffer(
 		len);
 
 	return tock_allow_rw_return_to_returncode(arval);
+}
+
+returncode_t
+libtock_isle_command_encrypt(
+	const uint32_t message_len)
+{
+	command_return_t crval = command(
+		DRIVER_NUM_ISLE,
+		ISLE_COMMAND_ENCRYPT,
+		message_len,
+		0);
+
+	return tock_command_return_novalue_to_returncode(crval);
 }
