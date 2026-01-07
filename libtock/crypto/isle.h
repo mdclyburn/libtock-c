@@ -10,6 +10,8 @@ extern "C" {
 
 #define DRIVER_NUM_ISLE ((uint32_t) 0x30999)
 
+#define ISLE_SUBSCRIBE_OUT_MESSAGE_READY ((uint32_t) 0)
+
 #define ISLE_COMMAND_ENCRYPT ((uint32_t) 0)
 #define ISLE_COMMAND_SET_ADDRESS_LOWER ((uint32_t) 10)
 #define ISLE_COMMAND_SET_ADDRESS_UPPER ((uint32_t) 20)
@@ -27,6 +29,9 @@ libtock_isle_allow_rw_set_out_buffer(
 	const uint8_t* buffer,
 	const uint32_t len);
 
+returncode_t
+libtock_isle_subscribe_out_message_ready(
+	subscribe_upcall callback_fn);
 
 /// Set the node IPv6 address.
 returncode_t

@@ -29,6 +29,19 @@ libtock_isle_allow_rw_set_out_buffer(
 }
 
 returncode_t
+libtock_isle_subscribe_out_message_ready(
+	subscribe_upcall callback_fn)
+{
+	subscribe_return_t srval = subscribe(
+		DRIVER_NUM_ISLE,
+		ISLE_SUBSCRIBE_OUT_MESSAGE_READY,
+		callback_fn,
+		NULL);
+
+	return tock_subscribe_return_to_returncode(srval);
+}
+
+returncode_t
 libtock_isle_command_set_address(
 	const uint8_t* const address)
 {
