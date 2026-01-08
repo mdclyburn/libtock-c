@@ -12,7 +12,7 @@ extern "C" {
 
 #define ISLE_SUBSCRIBE_OUT_MESSAGE_READY ((uint32_t) 0)
 
-#define ISLE_COMMAND_ENCRYPT ((uint32_t) 0)
+#define ISLE_COMMAND_ENCRYPT ((uint32_t) 1)
 #define ISLE_COMMAND_SET_ADDRESS_LOWER ((uint32_t) 10)
 #define ISLE_COMMAND_SET_ADDRESS_UPPER ((uint32_t) 20)
 
