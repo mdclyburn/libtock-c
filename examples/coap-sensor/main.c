@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -16,6 +17,7 @@
 
 #include <libtock-sync/services/alarm.h>
 #include <libtock/kernel/ipc.h>
+#include <libtock/interface/led.h>
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
 
@@ -145,32 +147,43 @@ void setNetworkConfiguration(otInstance* aInstance) {
 // Helper method that registers a stateChangeCallback to print
 // when state changes occur (useful for debugging).
 static void stateChangeCallback(uint32_t flags, void* context) {
-  otInstance* instance = (otInstance*)context;
-  if (!(flags & OT_CHANGED_THREAD_ROLE)) {
-    return;
-  }
+	bool connected = false;
+	otInstance* instance = (otInstance*)context;
 
-  switch (otThreadGetDeviceRole(instance)) {
+	if (!(flags & OT_CHANGED_THREAD_ROLE)) {
+		return;
+	}
+
+	switch (otThreadGetDeviceRole(instance)) {
     case OT_DEVICE_ROLE_DISABLED:
-      printf("[State Change] - Disabled.\n");
-      break;
+		printf("[State Change] - Disabled.\n");
+		break;
     case OT_DEVICE_ROLE_DETACHED:
-      printf("[State Change] - Detached.\n");
-      break;
+		printf("[State Change] - Detached.\n");
+		break;
     case OT_DEVICE_ROLE_CHILD:
-      printf("[State Change] - Child.\n");
-      printf("Successfully attached to Thread network as a child.\n");
-	  print_ip_addr(instance);
-      break;
+		printf("[State Change] - Child.\n");
+		printf("Successfully attached to Thread network as a child.\n");
+		print_ip_addr(instance);
+		connected = true;
+		break;
     case OT_DEVICE_ROLE_ROUTER:
-      printf("[State Change] - Router.\n");
-      break;
+		printf("[State Change] - Router.\n");
+		break;
     case OT_DEVICE_ROLE_LEADER:
-      printf("[State Change] - Leader.\n");
-      break;
+		printf("[State Change] - Leader.\n");
+		break;
     default:
-      break;
-  }
+		break;
+	}
+
+	if (connected) {
+		libtock_led_on(0);
+	} else {
+		libtock_led_off(0);
+	}
+
+	return;
 }
 
 // Helper method to print the given Thread node's registered
