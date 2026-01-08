@@ -231,48 +231,6 @@ void handle_coap_message(
 	if (payload_len < 4) { return; }
 	if ((_g_payload_buffer[0] & 0x03) != 0x01) { return; }
 
-	/* const bool hd_confirmable = (_g_payload_buffer[0] & (1 << 2)) != 0; */
-	/* const bool hd_nonconfirmable = (_g_payload_buffer[0] & (1 << 3)) != 0; */
-	/* const uint8_t hd_token_len = (_g_payload_buffer[0] & 0xF0) >> 4; */
-	/* const uint8_t hd_code_class = _g_payload_buffer[1] >> 5; */
-	/* const uint8_t hd_code_detail = _g_payload_buffer[1] & 0x1F; */
-	/* const uint16_t hd_message_id = *((uint16_t*) _g_payload_buffer + 2); */
-
-	/* printf("===== COAP message\n"); */
-	/* printf("CON: %c, NONCON: %c\n", */
-	/* 	   hd_confirmable ? 'Y' : 'N', */
-	/* 	   hd_nonconfirmable ? 'Y' : 'N'); */
-	/* printf("TKL: %i\n", hd_token_len); */
-	/* printf("Code: %d.%02d\n", hd_code_class, hd_code_detail); */
-	/* printf("Message ID: %04x\n", hd_message_id); */
-
-	/* // Don't respond if non-confirmable. */
-	/* if (hd_nonconfirmable) { return; } */
-
-	/* _g_payload_buffer[0] = */
-	/* 	// VERSION */
-	/* 	(1) */
-	/* 	// TYPE (not confirmable, unconfirmable) */
-	/* 	| (1 | (1 << 1)) << 2 */
-	/* 	// TOKEN LENGTH (same as received) */
-	/* 	| hd_token_len << 4; */
-
-	/* // RESPONSE CODE */
-	/* _g_payload_buffer[1] = */
-	/* 	// CLASS */
-	/* 	COAP_RESPONSE_CODE_CLASS_CLIENT_ERROR */
-	/* 	| COAP_RESPONSE_CODE_DETAIL_NOT_FOUND; */
-
-	/* // MESSAGE ID */
-	/* *((uint16_t*) _g_payload_buffer + 2) = */
-	/* 	hd_message_id; */
-
-	/* // TOKEN... leave it as-is in place. */
-
-	/* const uint16_t response_len = */
-	/* 	COAP_HEADER_LEN */
-	/* 	+ hd_token_len; */
-
 	otError error = OT_ERROR_NONE;
 	otMessage* response_msg;
 	otMessageInfo response_msg_info;
