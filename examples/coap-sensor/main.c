@@ -17,6 +17,7 @@
 
 #include <libtock-sync/services/alarm.h>
 #include <libtock/kernel/ipc.h>
+#include <libtock/interface/button.h>
 #include <libtock/interface/led.h>
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
@@ -26,6 +27,8 @@
 #define MAX_PAYLOAD_LEN (79)
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
+static bool g_connected;
+static otInstance* g_ot_instance;
 
 // helper utility demonstrating network config setup
 static void setNetworkConfiguration(otInstance* aInstance);
@@ -43,6 +46,15 @@ void handle_coap_message(
 
 void sendUdpTemperature(otInstance* aInstance, uint8_t temperature);
 
+static void __send_test_packet(void);
+
+#define BUTTON_COUNT ((uint8_t) 4)
+
+static void __on_button_press(
+	__attribute__ ((unused)) returncode_t rc,
+	int button_no,
+	bool pressed);
+
 // callback for Thread state change events
 static void stateChangeCallback(uint32_t flags, void* context);
 
@@ -50,10 +62,15 @@ static void stateChangeCallback(uint32_t flags, void* context);
 static void print_ip_addr(otInstance* instance);
 
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
+	for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
+		libtock_button_notify_on_press(i, __on_button_press);
+	}
+
   // Initialize OpenThread instance.
   otSysInit(argc, argv);
   otInstance* instance;
   instance = otInstanceInitSingle();
+  g_ot_instance = instance;
   assert(instance);
 
   // set child timeout to 60 seconds.
@@ -147,8 +164,8 @@ void setNetworkConfiguration(otInstance* aInstance) {
 // Helper method that registers a stateChangeCallback to print
 // when state changes occur (useful for debugging).
 static void stateChangeCallback(uint32_t flags, void* context) {
-	bool connected = false;
 	otInstance* instance = (otInstance*)context;
+	g_connected = false;
 
 	if (!(flags & OT_CHANGED_THREAD_ROLE)) {
 		return;
@@ -165,7 +182,7 @@ static void stateChangeCallback(uint32_t flags, void* context) {
 		printf("[State Change] - Child.\n");
 		printf("Successfully attached to Thread network as a child.\n");
 		print_ip_addr(instance);
-		connected = true;
+		g_connected = true;
 		break;
     case OT_DEVICE_ROLE_ROUTER:
 		printf("[State Change] - Router.\n");
@@ -177,7 +194,7 @@ static void stateChangeCallback(uint32_t flags, void* context) {
 		break;
 	}
 
-	if (connected) {
+	if (g_connected) {
 		libtock_led_on(0);
 	} else {
 		libtock_led_off(0);
@@ -326,4 +343,94 @@ void sendUdpTemperature(otInstance* aInstance, uint8_t temperature) {
     printf("Error sending udp packet\n");
     otMessageFree(message);
   }
+}
+
+static void __on_button_press(
+	__attribute__ ((unused)) returncode_t rc,
+	int button_no,
+	bool pressed)
+{
+
+	if (pressed) {
+		printf("button %d pressed\n", button_no);
+
+		switch(button_no) {
+		case 0:
+			__send_test_packet();
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+static uint16_t __g_coap_message_id = 0;
+static uint32_t __g_coap_token = 0;
+
+static void __send_test_packet(void)
+{
+	otError error = OT_ERROR_NONE;
+	otMessage* msg;
+	otMessageInfo msg_info;
+	otIp6Address dst_addr;
+
+	if (!g_connected) {
+
+		printf("Cannot send. Not connected yet...\n");
+		return;
+	}
+
+	printf("Initiating send.\n");
+
+	const uint8_t coap_payload[] = {
+		0b10000001,
+		0b01000101,
+		// Message ID
+	    ((uint8_t) __g_coap_message_id & 0xFF),
+		((uint8_t) __g_coap_token >> 8),
+		// Payload marker
+		0xFF,
+		// Payload
+		0x11, 0x22, 0xA7, 0xB3
+	};
+
+	if (!g_connected) {
+		return;
+	}
+
+	memset(&msg_info, 0, sizeof(msg_info));
+
+	otIp6AddressFromString(
+		"fe80::404c:c223:cc7e:c8a7",
+		&dst_addr);
+	msg_info.mPeerAddr = dst_addr;
+	msg_info.mPeerPort = 25560;
+
+	msg = otUdpNewMessage(
+		g_ot_instance,
+		NULL);
+	if (msg == NULL) {
+		printf("Error creating UDP message.\n");
+		return;
+	}
+
+	error = otMessageAppend(msg, &coap_payload, sizeof(coap_payload));
+	if (error != OT_ERROR_NONE) {
+		printf("Error building message.\n");
+		otMessageFree(msg);
+		return;
+	}
+
+	error = otUdpSend(
+		g_ot_instance,
+		&sUdpSocket,
+		msg,
+		&msg_info);
+	if (error != OT_ERROR_NONE) {
+		printf("Error sending UDP packet.\n");
+		otMessageFree(msg);
+		return;
+	}
+
+	return;
 }
