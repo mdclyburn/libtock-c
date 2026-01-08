@@ -40,7 +40,8 @@ libtock_isle_command_set_address(
 
 returncode_t
 libtock_isle_command_encrypt(
-	const uint32_t message_len);
+	const uint32_t message_len,
+	const uint32_t aad_len);
 
 #ifdef __cplusplus
 }

@@ -69,13 +69,14 @@ libtock_isle_command_set_address(
 
 returncode_t
 libtock_isle_command_encrypt(
-	const uint32_t message_len)
+	const uint32_t message_len,
+	const uint32_t aad_len)
 {
 	syscall_return_t crval = command(
 		DRIVER_NUM_ISLE,
 		ISLE_COMMAND_ENCRYPT,
 		message_len,
-		0);
+		aad_len);
 
 	return tock_command_return_novalue_to_returncode(crval);
 }
