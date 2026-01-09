@@ -367,6 +367,8 @@ static void __on_button_press(
 
 static uint16_t __g_coap_message_id = 0;
 static uint32_t __g_coap_token = 0;
+/* static uint16_t __g_coap_message_id = 0x128F; */
+/* static uint32_t __g_coap_token = 0x5228ABCD; */
 
 static void __send_test_packet(void)
 {
@@ -376,7 +378,6 @@ static void __send_test_packet(void)
 	otIp6Address dst_addr;
 
 	if (!g_connected) {
-
 		printf("Cannot send. Not connected yet...\n");
 		return;
 	}
@@ -384,16 +385,23 @@ static void __send_test_packet(void)
 	printf("Initiating send.\n");
 
 	const uint8_t coap_payload[] = {
-		0b10000001,
+		0b01000001,
 		0b01000101,
 		// Message ID
-	    ((uint8_t) __g_coap_message_id & 0xFF),
-		((uint8_t) __g_coap_token >> 8),
+	    ((uint8_t) (__g_coap_message_id & 0xFF)),
+	    ((uint8_t) ((__g_coap_message_id >> 8) & 0xFF)),
+		// Token
+		((uint8_t) (__g_coap_token & 0xFF)),
+		((uint8_t) ((__g_coap_token >> 8) & 0xFF)),
+		((uint8_t) ((__g_coap_token >> 16) & 0xFF)),
+		((uint8_t) ((__g_coap_token >> 24) & 0xFF)),
 		// Payload marker
 		0xFF,
 		// Payload
 		0x11, 0x22, 0xA7, 0xB3
 	};
+
+	printf("Original CoAP message size: %d B\n", sizeof(coap_payload));
 
 	if (!g_connected) {
 		return;
@@ -415,7 +423,7 @@ static void __send_test_packet(void)
 		return;
 	}
 
-	error = otMessageAppend(msg, &coap_payload, sizeof(coap_payload));
+	error = otMessageAppend(msg, coap_payload, sizeof(coap_payload));
 	if (error != OT_ERROR_NONE) {
 		printf("Error building message.\n");
 		otMessageFree(msg);
@@ -431,6 +439,9 @@ static void __send_test_packet(void)
 		printf("Error sending UDP packet.\n");
 		otMessageFree(msg);
 		return;
+	} else {
+		__g_coap_message_id++;
+		__g_coap_token++;
 	}
 
 	return;
