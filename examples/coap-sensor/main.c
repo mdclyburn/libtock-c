@@ -165,11 +165,12 @@ void setNetworkConfiguration(otInstance* aInstance) {
 // when state changes occur (useful for debugging).
 static void stateChangeCallback(uint32_t flags, void* context) {
 	otInstance* instance = (otInstance*)context;
-	g_connected = false;
 
 	if (!(flags & OT_CHANGED_THREAD_ROLE)) {
 		return;
 	}
+
+	g_connected = false;
 
 	switch (otThreadGetDeviceRole(instance)) {
     case OT_DEVICE_ROLE_DISABLED:
