@@ -343,6 +343,7 @@ void handle_coap_message(
 		sender_addr_str,
 		OT_IP6_ADDRESS_STRING_SIZE);
 	printf("Received packet from %s.\n", sender_addr_str);
+	return;
 
 	// Determine that it is COAP and the kind of COAP message it is,
 	// and respond appropriately.
