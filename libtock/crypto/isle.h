@@ -13,6 +13,7 @@ extern "C" {
 #define ISLE_SUBSCRIBE_OUT_MESSAGE_READY ((uint32_t) 0)
 
 #define ISLE_COMMAND_ENCRYPT ((uint32_t) 1)
+#define ISLE_COMMAND_DECRYPT ((uint32_t) 2)
 #define ISLE_COMMAND_SET_ADDRESS_LOWER ((uint32_t) 10)
 #define ISLE_COMMAND_SET_ADDRESS_UPPER ((uint32_t) 20)
 
@@ -40,6 +41,11 @@ libtock_isle_command_set_address(
 
 returncode_t
 libtock_isle_command_encrypt(
+	const uint32_t message_len,
+	const uint32_t aad_len);
+
+returncode_t
+libtock_isle_command_decrypt(
 	const uint32_t message_len,
 	const uint32_t aad_len);
 
