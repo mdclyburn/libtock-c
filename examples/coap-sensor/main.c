@@ -46,6 +46,8 @@ void handle_coap_message(
 
 void sendUdpTemperature(otInstance* aInstance, uint8_t temperature);
 
+void announce_ip_address(void);
+
 static void __send_test_packet(void);
 
 #define BUTTON_COUNT ((uint8_t) 4)
@@ -103,6 +105,11 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
     libtocksync_alarm_delay_ms(100);
   }
 
+  uint32_t counter_freq;
+  uint32_t last_announce;
+  libtock_alarm_command_get_frequency(&counter_freq);
+  libtock_alarm_command_read(&last_announce);
+
   //
   ////////////////////////////////////////////////////
 
@@ -121,6 +128,15 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 	const bool is_openthread_pending = openthread_platform_pending_work();
 	const bool is_work_pending = is_tasklet_pending || is_openthread_pending;
     if (!is_work_pending) {
+		/* uint32_t now; */
+		/* libtock_alarm_command_read(&now); */
+		/* if (g_connected && (now - last_announce) > (counter_freq * 10)) { */
+		/* 	libtock_alarm_command_read(&last_announce); */
+		/* 	printf("Announcing address.\n"); */
+		/* 	announce_ip_address(); */
+		/* } else { */
+		/* 	yield(); */
+		/* } */
 		yield();
     }
   }
@@ -134,28 +150,74 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 //  -- Channel:    26
 //  -- PanId:      0xabcd
 //  -- Networkkey: 00112233445566778899aabbccddeeff
+/*
+Active Timestamp: 0
+Channel: 26
+Channel Mask: 0x07fff800
+Ext PAN ID: b7e699aefab75ba4
+Mesh Local Prefix: fd74:42e:17e:e1ae::/64
+Network Key: 84fb54cc428a595911a263d5caed2456
+Network Name: WIoT
+PAN ID: 0x4501
+PSKc: b6815b13690e51189a736edcc18e5653
+Security Policy: 672 onrcp 0
+ */
 void setNetworkConfiguration(otInstance* aInstance) {
   otOperationalDataset aDataset;
 
   memset(&aDataset, 0, sizeof(otOperationalDataset));
 
   /* Set Channel to 26 */
+  /* aDataset.mChannel = 20; */
   aDataset.mChannel = 26;
   aDataset.mComponents.mIsChannelPresent = true;
+  aDataset.mChannelMask = 0x07fff800;
+  aDataset.mComponents.mIsChannelMaskPresent = true;
 
   /* Set Pan ID to abcd */
-  aDataset.mPanId = (otPanId)0xabcd;
+  /* aDataset.mPanId = (otPanId)0xabcd; */
+  aDataset.mPanId = (otPanId) 0x4501;
   aDataset.mComponents.mIsPanIdPresent = true;
+  uint8_t extpanid[] = {
+	  0x45, 0x01, 0xc5, 0xee, 0x45, 0x01, 0xc5, 0xee
+  };
+  memcpy(
+	  aDataset.mExtendedPanId.m8,
+	  extpanid,
+	  sizeof(extpanid));
+  aDataset.mComponents.mIsExtendedPanIdPresent = true;
+
+  uint8_t pskc[] = {
+	  0x22, 0xd2, 0x48, 0x61, 0xd6, 0x2a, 0xd7, 0x39, 0xbc, 0x63, 0x54, 0x24, 0xb3, 0xe2, 0x43, 0xf8
+  };
+  memcpy(
+	  aDataset.mPskc.m8,
+	  pskc,
+	  sizeof(pskc));
+  aDataset.mComponents.mIsPskcPresent = true;
 
   /* Set network key to 00112233445566778899aabbccddeeff */
+  /* uint8_t key[OT_NETWORK_KEY_SIZE] = { */
+  /* 	  0x00, 0x11, 0x22, 0x33, */
+  /* 	  0x44, 0x55, 0x66, 0x77, */
+  /* 	  0x88, 0x99, 0xaa, 0xbb, */
+  /* 	  0xcc, 0xdd, 0xee, 0xff */
+  /* }; */
   uint8_t key[OT_NETWORK_KEY_SIZE] = {
-	  0x00, 0x11, 0x22, 0x33,
-	  0x44, 0x55, 0x66, 0x77,
-	  0x88, 0x99, 0xaa, 0xbb,
-	  0xcc, 0xdd, 0xee, 0xff
+	  0x84, 0xFB, 0x54, 0xCC,
+	  0x42, 0x8A, 0x59, 0x59,
+	  0x11, 0xA2, 0x63, 0xD5,
+	  0xCA, 0xED, 0x24, 0x56
   };
   memcpy(aDataset.mNetworkKey.m8, key, sizeof(aDataset.mNetworkKey));
   aDataset.mComponents.mIsNetworkKeyPresent = true;
+
+  aDataset.mNetworkName.m8[0] = 'W';
+  aDataset.mNetworkName.m8[0] = 'I';
+  aDataset.mNetworkName.m8[0] = 'o';
+  aDataset.mNetworkName.m8[0] = 'T';
+  aDataset.mNetworkName.m8[0] = 0x00;
+  aDataset.mComponents.mIsNetworkNamePresent = true;
 
   otError error = otDatasetSetActive(aInstance, &aDataset);
   assert(error == 0);
@@ -164,7 +226,9 @@ void setNetworkConfiguration(otInstance* aInstance) {
 // Helper method that registers a stateChangeCallback to print
 // when state changes occur (useful for debugging).
 static void stateChangeCallback(uint32_t flags, void* context) {
+	otError oerr;
 	otInstance* instance = (otInstance*)context;
+	const uint8_t stable_addr_upper[] = { 0xfd, 0x74, 0x04, 0x2e, 0x01, 0x7e, 0xe1, 0xae };
 
 	if (!(flags & OT_CHANGED_THREAD_ROLE)) {
 		return;
@@ -180,10 +244,30 @@ static void stateChangeCallback(uint32_t flags, void* context) {
 		printf("[State Change] - Detached.\n");
 		break;
     case OT_DEVICE_ROLE_CHILD:
+		g_connected = true;
+
+		// Add stable IP.
+		otNetifAddress stable_addr;
+		memset(&stable_addr, 0, sizeof(otNetifAddress));
+		stable_addr.mMeshLocal = true;
+		stable_addr.mValid = true;
+		stable_addr.mPrefixLength = 64;
+		stable_addr.mPreferred = true;
+		stable_addr.mAddressOrigin = OT_ADDRESS_ORIGIN_MANUAL;
+		memcpy(stable_addr.mAddress.mFields.m8, stable_addr_upper, sizeof(stable_addr_upper));
+		memcpy(stable_addr.mAddress.mFields.m8 + 8,
+			   ((const uint8_t* const) 0x10000000) + 0xA4,
+			   8);
+		oerr = otIp6AddUnicastAddress(
+			instance,
+			&stable_addr);
+		if (oerr != OT_ERROR_NONE) {
+			printf("failed to add stable address: %d\n", oerr);
+		}
+
 		printf("[State Change] - Child.\n");
 		printf("Successfully attached to Thread network as a child.\n");
 		print_ip_addr(instance);
-		g_connected = true;
 		break;
     case OT_DEVICE_ROLE_ROUTER:
 		printf("[State Change] - Router.\n");
@@ -239,6 +323,11 @@ void handle_coap_message(
 	const otMessageInfo* msg_info)
 {
 	otInstance* const ot_instance = (otInstance*) context;
+
+	// Flash the LED.
+	libtock_led_on(2);
+    libtocksync_alarm_delay_ms(50);
+	libtock_led_off(2);
 
 	// Get the message.
 	const uint16_t payload_len = otMessageRead(
@@ -359,6 +448,11 @@ static void __on_button_press(
 		case 0:
 			__send_test_packet();
 			break;
+		case 1:
+			otInstanceErasePersistentInfo(g_ot_instance);
+			g_connected = false;
+			while (true) {  }
+			break;
 		default:
 			break;
 		}
@@ -410,10 +504,10 @@ static void __send_test_packet(void)
 	memset(&msg_info, 0, sizeof(msg_info));
 
 	otIp6AddressFromString(
-		"fe80::404c:c223:cc7e:c8a7",
+		"fd74:42e:17e:e1ae:8563:a0a9:6da3:e843",
 		&dst_addr);
 	msg_info.mPeerAddr = dst_addr;
-	msg_info.mPeerPort = 25560;
+	msg_info.mPeerPort = 5683;
 
 	msg = otUdpNewMessage(
 		g_ot_instance,
@@ -436,13 +530,63 @@ static void __send_test_packet(void)
 		msg,
 		&msg_info);
 	if (error != OT_ERROR_NONE) {
-		printf("Error sending UDP packet.\n");
+		printf("Error sending UDP packet: %d\n", error);
 		otMessageFree(msg);
 		return;
 	} else {
 		__g_coap_message_id++;
 		__g_coap_token++;
 	}
+
+	return;
+}
+
+void announce_ip_address(void)
+{
+	otError error = OT_ERROR_NONE;
+	otMessage*   message;
+	otMessageInfo messageInfo;
+	otIp6Address destinationAddr;
+
+	char addr_string[64];
+	const otNetifAddress* unicastAddrs = otIp6GetUnicastAddresses(g_ot_instance);
+
+	printf("[THREAD] Device IPv6 Addresses: ");
+	for (const otNetifAddress* addr = unicastAddrs; addr; addr = addr->mNext) {
+		uint8_t addr_str_len = 0;
+		const otIp6Address ip6_addr = addr->mAddress;
+		otIp6AddressToString(&ip6_addr, addr_string, sizeof(addr_string));
+		while (addr_string[addr_str_len++] != '\0');
+
+		memset(&messageInfo, 0, sizeof(messageInfo));
+
+		otIp6AddressFromString("ff03::02", &destinationAddr);
+		messageInfo.mPeerAddr = destinationAddr;
+		messageInfo.mPeerPort = 1212;
+		message = otUdpNewMessage(g_ot_instance, NULL);
+		if (message == NULL) {
+			printf("Error creating udp message\n");
+			return;
+		}
+
+		error = otMessageAppend(message, &addr_string, addr_str_len);
+		if (error != OT_ERROR_NONE && message != NULL) {
+			printf("Error appending to udp message\n");
+			otMessageFree(message);
+			return;
+		}
+
+		error = otUdpSend(g_ot_instance, &sUdpSocket, message, &messageInfo);
+		if (error != OT_ERROR_NONE && message != NULL) {
+			printf("Error sending udp packet\n");
+			otMessageFree(message);
+		}
+	}
+
+	// Flash the LED.
+	libtock_led_on(1);
+    libtocksync_alarm_delay_ms(50);
+	libtock_led_off(1);
 
 	return;
 }
