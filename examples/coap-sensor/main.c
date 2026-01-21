@@ -19,16 +19,20 @@
 #include <libtock/kernel/ipc.h>
 #include <libtock/interface/button.h>
 #include <libtock/interface/led.h>
+#include <libtock/peripherals/gpio.h>
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
 
 #include "coap.h"
 
 #define MAX_PAYLOAD_LEN (79)
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:af6c:fc58:7cbf:3836"
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
 static bool g_connected;
 static otInstance* g_ot_instance;
+static uint16_t __g_coap_message_id = 0;
+static uint32_t __g_coap_token = 0;
 
 // helper utility demonstrating network config setup
 static void setNetworkConfiguration(otInstance* aInstance);
@@ -44,7 +48,7 @@ void handle_coap_message(
 	otMessage* msg,
 	const otMessageInfo* msg_info);
 
-void sendUdpTemperature(otInstance* aInstance, uint8_t temperature);
+void sendUdpTemperature(otInstance* aInstance);
 
 void announce_ip_address(void);
 
@@ -67,6 +71,9 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 	for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
 		libtock_button_notify_on_press(i, __on_button_press);
 	}
+
+	// Set up GPIO.
+	libtock_gpio_enable_output(0);
 
   // Initialize OpenThread instance.
   otSysInit(argc, argv);
@@ -109,6 +116,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
   uint32_t last_announce;
   libtock_alarm_command_get_frequency(&counter_freq);
   libtock_alarm_command_read(&last_announce);
+  printf("counter freq.: %ld\n", counter_freq);
 
   //
   ////////////////////////////////////////////////////
@@ -403,7 +411,7 @@ void initUdp(otInstance* aInstance) {
   otUdpBind(aInstance, &sUdpSocket, &listenSockAddr, OT_NETIF_THREAD);
 }
 
-void sendUdpTemperature(otInstance* aInstance, uint8_t temperature) {
+void sendUdpTemperature(otInstance* aInstance) {
 
   otError error = OT_ERROR_NONE;
   otMessage*   message;
@@ -412,7 +420,7 @@ void sendUdpTemperature(otInstance* aInstance, uint8_t temperature) {
 
   memset(&messageInfo, 0, sizeof(messageInfo));
 
-  otIp6AddressFromString("ff02::02", &destinationAddr);
+  otIp6AddressFromString(EXP_DEST_ADDR, &destinationAddr);
   messageInfo.mPeerAddr = destinationAddr;
   messageInfo.mPeerPort = 1212;
 
@@ -422,14 +430,35 @@ void sendUdpTemperature(otInstance* aInstance, uint8_t temperature) {
     return;
   }
 
-  error = otMessageAppend(message, &temperature, 1);
+  const uint8_t coap_payload[] = {
+	  0b01000001,
+	  0b01000101,
+	  // Message ID
+	  ((uint8_t) (__g_coap_message_id & 0xFF)),
+	  ((uint8_t) ((__g_coap_message_id >> 8) & 0xFF)),
+	  // Token
+	  ((uint8_t) (__g_coap_token & 0xFF)),
+	  ((uint8_t) ((__g_coap_token >> 8) & 0xFF)),
+	  ((uint8_t) ((__g_coap_token >> 16) & 0xFF)),
+	  ((uint8_t) ((__g_coap_token >> 24) & 0xFF)),
+	  // Payload marker
+	  0xFF,
+	  // Payload
+	  0x11, 0x22, 0xA7, 0xB3
+	  /* 0x11, 0x22, 0xA7, 0xB3 */
+  };
+
+  error = otMessageAppend(message, &coap_payload, sizeof(coap_payload));
   if (error != OT_ERROR_NONE && message != NULL) {
     printf("Error appending to udp message\n");
     otMessageFree(message);
     return;
   }
 
+  libtock_gpio_set(0);
   error = otUdpSend(aInstance, &sUdpSocket, message, &messageInfo);
+  libtock_gpio_clear(0);
+
   if (error != OT_ERROR_NONE && message != NULL) {
     printf("Error sending udp packet\n");
     otMessageFree(message);
@@ -450,18 +479,19 @@ static void __on_button_press(
 			__send_test_packet();
 			break;
 		case 1:
-			otInstanceErasePersistentInfo(g_ot_instance);
-			g_connected = false;
-			while (true) {  }
+			sendUdpTemperature(g_ot_instance);
 			break;
+		/* case 1: */
+		/* 	otInstanceErasePersistentInfo(g_ot_instance); */
+		/* 	g_connected = false; */
+		/* 	while (true) {  } */
+		/* 	break; */
 		default:
 			break;
 		}
 	}
 }
 
-static uint16_t __g_coap_message_id = 0;
-static uint32_t __g_coap_token = 0;
 /* static uint16_t __g_coap_message_id = 0x128F; */
 /* static uint32_t __g_coap_token = 0x5228ABCD; */
 
@@ -493,6 +523,9 @@ static void __send_test_packet(void)
 		// Payload marker
 		0xFF,
 		// Payload
+		0x11, 0x22, 0xA7, 0xB3,
+		0x11, 0x22, 0xA7, 0xB3,
+		0x11, 0x22, 0xA7, 0xB3,
 		0x11, 0x22, 0xA7, 0xB3
 	};
 
@@ -505,7 +538,7 @@ static void __send_test_packet(void)
 	memset(&msg_info, 0, sizeof(msg_info));
 
 	otIp6AddressFromString(
-		"fd74:42e:17e:e1ae:8563:a0a9:6da3:e843",
+		EXP_DEST_ADDR,
 		&dst_addr);
 	msg_info.mPeerAddr = dst_addr;
 	msg_info.mPeerPort = 5683;
@@ -525,6 +558,7 @@ static void __send_test_packet(void)
 		return;
 	}
 
+	libtock_gpio_toggle(0);
 	error = otUdpSend(
 		g_ot_instance,
 		&sUdpSocket,
@@ -538,6 +572,7 @@ static void __send_test_packet(void)
 		__g_coap_message_id++;
 		__g_coap_token++;
 	}
+	libtock_gpio_toggle(0);
 
 	return;
 }

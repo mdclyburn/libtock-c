@@ -33,7 +33,16 @@ static struct pending_tx_done_callback {
   returncode_t ret;
 } pending_tx_done_callback = {false, false, RETURNCODE_FAIL};
 
+uint32_t ottock_latest_tx_done_at;
+
 static void tx_done_callback(returncode_t ret, bool acked) {
+	if (ottock_latest_tx_done_at != 0) {
+		uint32_t n = libtock_unsafe_now();
+		printf("tx duration: %ld \n",
+			   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768));
+		ottock_latest_tx_done_at = 0;
+	}
+
 	pending_tx_done_callback.flag = true;
   pending_tx_done_callback.acked = acked;
   pending_tx_done_callback.ret = ret;

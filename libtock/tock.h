@@ -75,6 +75,9 @@ typedef enum {
   TOCK_STATUSCODE_NOACK       = 13,
 } statuscode_t;
 
+	uint32_t libtock_unsafe_now(void);
+	extern uint32_t ottock_latest_tx_done_at;
+
 // Generic return structure from a system call.
 typedef struct {
   syscall_rtype_t type;

@@ -5,6 +5,12 @@
 
 #include "tock.h"
 
+uint32_t libtock_unsafe_now(void)
+{
+	volatile uint32_t* const counter = ((uint32_t*) (0x40011000 + 0x0504));
+	return *counter;
+}
+
 returncode_t tock_status_to_returncode(statuscode_t status) {
   // Conversion is easy. Since ReturnCode numeric mappings are -1*ErrorCode,
   // and success is 0 in both cases, we can just multiply by -1.
