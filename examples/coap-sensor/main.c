@@ -25,7 +25,7 @@
 
 #include "coap.h"
 
-#define MAX_PAYLOAD_LEN (79)
+#define MAX_PAYLOAD_LEN ((uint32_t) 79)
 #define EXP_DEST_ADDR "fd74:42e:17e:e1ae:af6c:fc58:7cbf:3836"
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
@@ -411,6 +411,20 @@ void initUdp(otInstance* aInstance) {
   otUdpBind(aInstance, &sUdpSocket, &listenSockAddr, OT_NETIF_THREAD);
 }
 
+const uint8_t coap_payload[] = {
+	0b01000001,
+	0b01000101,
+	// Message ID
+    0xFA,
+	0xFE,
+	// Token
+	 0x00, 0x01, 0x2A, 0x5E,
+	// Payload marker
+	0xFF,
+	// Payload
+	0x11, 0x22, 0xA7, 0xB3,
+};
+
 void sendUdpTemperature(otInstance* aInstance) {
 
   otError error = OT_ERROR_NONE;
@@ -429,24 +443,6 @@ void sendUdpTemperature(otInstance* aInstance) {
     printf("Error creating udp message\n");
     return;
   }
-
-  const uint8_t coap_payload[] = {
-	  0b01000001,
-	  0b01000101,
-	  // Message ID
-	  ((uint8_t) (__g_coap_message_id & 0xFF)),
-	  ((uint8_t) ((__g_coap_message_id >> 8) & 0xFF)),
-	  // Token
-	  ((uint8_t) (__g_coap_token & 0xFF)),
-	  ((uint8_t) ((__g_coap_token >> 8) & 0xFF)),
-	  ((uint8_t) ((__g_coap_token >> 16) & 0xFF)),
-	  ((uint8_t) ((__g_coap_token >> 24) & 0xFF)),
-	  // Payload marker
-	  0xFF,
-	  // Payload
-	  0x11, 0x22, 0xA7, 0xB3
-	  /* 0x11, 0x22, 0xA7, 0xB3 */
-  };
 
   error = otMessageAppend(message, &coap_payload, sizeof(coap_payload));
   if (error != OT_ERROR_NONE && message != NULL) {
@@ -507,29 +503,16 @@ static void __send_test_packet(void)
 		return;
 	}
 
-	printf("Initiating send.\n");
-
-	const uint8_t coap_payload[] = {
-		0b01000001,
-		0b01000101,
-		// Message ID
-	    ((uint8_t) (__g_coap_message_id & 0xFF)),
-	    ((uint8_t) ((__g_coap_message_id >> 8) & 0xFF)),
-		// Token
-		((uint8_t) (__g_coap_token & 0xFF)),
-		((uint8_t) ((__g_coap_token >> 8) & 0xFF)),
-		((uint8_t) ((__g_coap_token >> 16) & 0xFF)),
-		((uint8_t) ((__g_coap_token >> 24) & 0xFF)),
-		// Payload marker
-		0xFF,
-		// Payload
-		0x11, 0x22, 0xA7, 0xB3,
-		0x11, 0x22, 0xA7, 0xB3,
-		0x11, 0x22, 0xA7, 0xB3,
-		0x11, 0x22, 0xA7, 0xB3
-	};
+	printf("Initiating send.\n");;
 
 	printf("Original CoAP message size: %d B\n", sizeof(coap_payload));
+
+	if (sizeof(coap_payload) > MAX_PAYLOAD_LEN) {
+		printf("Payload too large to send (%d B > %ld B).\n",
+			   sizeof(coap_payload),
+			   MAX_PAYLOAD_LEN);
+		return;
+	}
 
 	if (!g_connected) {
 		return;
@@ -558,7 +541,7 @@ static void __send_test_packet(void)
 		return;
 	}
 
-	libtock_gpio_toggle(0);
+	/* libtock_gpio_toggle(0); */
 	error = otUdpSend(
 		g_ot_instance,
 		&sUdpSocket,
@@ -572,7 +555,7 @@ static void __send_test_packet(void)
 		__g_coap_message_id++;
 		__g_coap_token++;
 	}
-	libtock_gpio_toggle(0);
+	/* libtock_gpio_toggle(0); */
 
 	return;
 }

@@ -36,12 +36,12 @@ static struct pending_tx_done_callback {
 uint32_t ottock_latest_tx_done_at;
 
 static void tx_done_callback(returncode_t ret, bool acked) {
-	if (ottock_latest_tx_done_at != 0) {
-		uint32_t n = libtock_unsafe_now();
-		printf("tx duration: %ld \n",
-			   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768));
-		ottock_latest_tx_done_at = 0;
-	}
+	/* if (ottock_latest_tx_done_at != 0) { */
+	/* 	uint32_t n = libtock_unsafe_now(); */
+	/* 	printf("tx duration: %ld \n", */
+	/* 		   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768)); */
+	/* 	ottock_latest_tx_done_at = 0; */
+	/* } */
 
 	pending_tx_done_callback.flag = true;
   pending_tx_done_callback.acked = acked;
@@ -170,6 +170,12 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame) {
   if (!otPlatRadioIsEnabled(aInstance)){
     otPlatRadioEnable(aInstance);
   }
+	if (ottock_latest_tx_done_at != 0) {
+		uint32_t n = libtock_unsafe_now();
+		printf("net stack duration: %ld us\n",
+			   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768));
+		ottock_latest_tx_done_at = 0;
+	}
 
   // The Tock raw 15.4 driver expects frames that do not include the MFR (aka
   // the CRC bytes). OpenThread gives us the full frame, so we just drop the
