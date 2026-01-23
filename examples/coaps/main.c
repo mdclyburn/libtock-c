@@ -268,23 +268,12 @@ static void stateChangeCallback(uint32_t flags, void* context) {
     case OT_DEVICE_ROLE_CHILD:
 		g_connected = true;
 
-		// Add stable IP.
-		otNetifAddress stable_addr;
-		memset(&stable_addr, 0, sizeof(otNetifAddress));
-		stable_addr.mMeshLocal = true;
-		stable_addr.mValid = true;
-		stable_addr.mPrefixLength = 64;
-		stable_addr.mPreferred = true;
-		stable_addr.mAddressOrigin = OT_ADDRESS_ORIGIN_MANUAL;
-		memcpy(stable_addr.mAddress.mFields.m8, stable_addr_upper, sizeof(stable_addr_upper));
-		memcpy(stable_addr.mAddress.mFields.m8 + 8,
-			   ((const uint8_t* const) 0x10000000) + 0xA4,
-			   8);
-		oerr = otIp6AddUnicastAddress(
+		// Start CoAPS
+		oerr = otCoapSecureStart(
 			instance,
-			&stable_addr);
+			14578);
 		if (oerr != OT_ERROR_NONE) {
-			printf("failed to add stable address: %d\n", oerr);
+			printf("Error starting CoAPS: %d\n", oerr);
 		}
 
 		printf("[State Change] - Child.\n");
