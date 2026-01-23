@@ -351,7 +351,11 @@ void handle_coap_message(
 		sender_addr_str,
 		OT_IP6_ADDRESS_STRING_SIZE);
 	printf("Received packet from %s.\n", sender_addr_str);
-	return;
+
+	if (_g_payload_buffer[0] & 0b00100000) {
+		printf("Received acknowledgement.\n");
+		return;
+	}
 
 	// Determine that it is COAP and the kind of COAP message it is,
 	// and respond appropriately.
@@ -369,7 +373,6 @@ void handle_coap_message(
 	response_msg_info.mPeerAddr = sender_addr;
 	response_msg_info.mPeerPort = COAP_PORT_NO;
 
-	/* response_msg = otUdpNewMessage(ot_instance, NULL); */
 	response_msg = otCoapNewMessage(ot_instance, NULL);
 	if (response_msg == NULL) {
 		printf("Error creating CoAP response\n");
@@ -379,7 +382,7 @@ void handle_coap_message(
 	error = otCoapMessageInitResponse(
 		response_msg,
 		request_msg,
-		OT_COAP_TYPE_NON_CONFIRMABLE,
+		OT_COAP_TYPE_ACKNOWLEDGMENT,
 		OT_COAP_CODE_NOT_IMPLEMENTED);
 	if (error != OT_ERROR_NONE) {
 		printf("Error initializing CoAP response\n");
@@ -394,6 +397,8 @@ void handle_coap_message(
 	if (error != OT_ERROR_NONE && response_msg != NULL) {
 		printf("Error sending udp packet\n");
 		otMessageFree(response_msg);
+	} else {
+		printf("Sent response.\n");
 	}
 
 	return;
@@ -503,7 +508,7 @@ static void __send_test_packet(void)
 		return;
 	}
 
-	printf("Initiating send.\n");;
+	printf("Initiating send.\n");
 
 	printf("Original CoAP message size: %d B\n", sizeof(coap_payload));
 
