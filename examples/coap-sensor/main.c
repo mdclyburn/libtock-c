@@ -25,8 +25,11 @@
 
 #include "decrypt.h"
 
+#include "sample-data.h"
+const uint16_t* const _g_audio_samples = MDL_SampleAudio;
+
 #define MAX_PAYLOAD_LEN ((uint32_t) 79)
-#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:8a88:25d8:1d6d:5894"
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:c0fc:8bd7:3333:d3ef"
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
 static bool g_connected;
@@ -49,6 +52,7 @@ void handle_coap_message(
 	const otMessageInfo* msg_info);
 
 void sendUdpTemperature(otInstance* aInstance);
+void run_sample_classification(void);
 
 void announce_ip_address(void);
 
@@ -113,12 +117,12 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
   }
 
   // Set the device up to be a SED.
-  otLinkModeConfig link_config;
-  link_config.mRxOnWhenIdle = false;
-  link_config.mNetworkData = true;
-  link_config.mDeviceType = false;
-  otThreadSetLinkMode(instance, link_config);
-  otLinkSetPollPeriod(instance, 10000);
+  /* otLinkModeConfig link_config; */
+  /* link_config.mRxOnWhenIdle = false; */
+  /* link_config.mNetworkData = true; */
+  /* link_config.mDeviceType = false; */
+  /* otThreadSetLinkMode(instance, link_config); */
+  /* otLinkSetPollPeriod(instance, 10000); */
 
   uint32_t counter_freq;
   uint32_t last_announce;
@@ -365,6 +369,8 @@ void handle_coap_message(
 		printf("Received acknowledgement.\n");
 		return;
 	}
+
+	run_sample_classification();
 
 	// Determine that it is COAP and the kind of COAP message it is,
 	// and respond appropriately.
@@ -659,6 +665,26 @@ void announce_ip_address(void)
 	libtock_led_on(1);
     libtocksync_alarm_delay_ms(50);
 	libtock_led_off(1);
+
+	return;
+}
+
+void run_sample_classification(void)
+{
+	uint32_t t_now;
+	uint32_t t_now_ms;
+
+	libtock_led_on(3);
+	libtock_alarm_command_read(&t_now);
+	t_now_ms = libtock_alarm_ticks_to_ms(t_now);
+
+	printf("Running classification...\n");
+	classify(_g_audio_samples);
+	uint32_t t_classify_done;
+	libtock_alarm_command_read(&t_classify_done);
+	const uint32_t d_classify_ms = libtock_alarm_ticks_to_ms(t_classify_done - t_now);
+	printf("Done in %lu ms.\n", d_classify_ms);
+	libtock_led_off(3);
 
 	return;
 }
