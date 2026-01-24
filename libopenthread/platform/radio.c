@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <libtock-sync/net/ieee802154.h>
+#include <libtock/interface/led.h>
 #include <libtock/net/eui64.h>
 #include <libtock/net/ieee802154.h>
 
@@ -36,14 +37,16 @@ static struct pending_tx_done_callback {
 uint32_t ottock_latest_tx_done_at;
 
 static void tx_done_callback(returncode_t ret, bool acked) {
-	if (ottock_latest_tx_done_at != 0) {
-		uint32_t n = libtock_unsafe_now();
-		/* printf("tx duration: %ld \n", */
-		/* 	   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768)); */
-		printf("tx finish : %ld ticks\n",
-			   libtock_unsafe_now());
-		ottock_latest_tx_done_at = 0;
-	}
+	/* if (ottock_latest_tx_done_at != 0) { */
+	/* 	uint32_t n = libtock_unsafe_now(); */
+	/* 	/\* printf("tx duration: %ld \n", *\/ */
+	/* 	/\* 	   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768)); *\/ */
+	/* 	printf("tx finish : %ld ticks\n", */
+	/* 		   libtock_unsafe_now()); */
+	/* 	ottock_latest_tx_done_at = 0; */
+	/* } */
+
+  libtock_led_off(2);
 
 	pending_tx_done_callback.flag = true;
   pending_tx_done_callback.acked = acked;
@@ -151,6 +154,9 @@ otError otPlatRadioSleep(otInstance *aInstance) {
     printf("Sleep Radio Failed!\n");
     return OT_ERROR_FAILED;
   }
+
+  libtock_led_off(1);
+
   return OT_ERROR_NONE;
 }
 
@@ -165,6 +171,8 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel) {
   }
 
   otError result = otTockStartReceive(aChannel, aInstance);
+
+  libtock_led_on(1);
   return result;
 }
 
@@ -178,8 +186,8 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame) {
 	/* 		   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768)); */
 	/* 	ottock_latest_tx_done_at = 0; */
 	/* } */
-  printf("tx start: %ld\n",
-		 libtock_unsafe_now());
+  /* printf("tx start: %ld\n", */
+  /* 		 libtock_unsafe_now()); */
 
   // The Tock raw 15.4 driver expects frames that do not include the MFR (aka
   // the CRC bytes). OpenThread gives us the full frame, so we just drop the
@@ -197,6 +205,9 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame) {
   }
 
   // Notify openthread that transmission is successfully scheduled to be transmitted.
+
+  libtock_led_on(1);
+  libtock_led_on(2);
   return OT_ERROR_NONE;
 }
 

@@ -23,10 +23,10 @@
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
 
-#include "coap.h"
+#include "decrypt.h"
 
 #define MAX_PAYLOAD_LEN ((uint32_t) 79)
-#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:d78:36e5:7d40:a4e7"
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:8a88:25d8:1d6d:5894"
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
 static bool g_connected;
@@ -38,7 +38,7 @@ static uint32_t __g_coap_token = 0;
 static void setNetworkConfiguration(otInstance* aInstance);
 
 static otUdpSocket sUdpSocket;
-
+void dummy_decrypt(void);
 void initUdp(otInstance* aInstance);
 
 void handleUdpRecvTemperature(void* aContext, otMessage* aMessage,
@@ -112,11 +112,19 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
     libtocksync_alarm_delay_ms(100);
   }
 
+  // Set the device up to be a SED.
+  otLinkModeConfig link_config;
+  link_config.mRxOnWhenIdle = false;
+  link_config.mNetworkData = true;
+  link_config.mDeviceType = false;
+  otThreadSetLinkMode(instance, link_config);
+  otLinkSetPollPeriod(instance, 10000);
+
   uint32_t counter_freq;
   uint32_t last_announce;
   libtock_alarm_command_get_frequency(&counter_freq);
   libtock_alarm_command_read(&last_announce);
-  printf("counter freq.: %ld\n", counter_freq);
+  /* printf("counter freq.: %ld\n", counter_freq); */
 
   //
   ////////////////////////////////////////////////////
@@ -276,6 +284,7 @@ static void stateChangeCallback(uint32_t flags, void* context) {
 		printf("[State Change] - Child.\n");
 		printf("Successfully attached to Thread network as a child.\n");
 		print_ip_addr(instance);
+
 		break;
     case OT_DEVICE_ROLE_ROUTER:
 		printf("[State Change] - Router.\n");
@@ -371,7 +380,7 @@ void handle_coap_message(
 	memset(&response_msg_info, 0, sizeof(response_msg_info));
 
 	response_msg_info.mPeerAddr = sender_addr;
-	response_msg_info.mPeerPort = COAP_PORT_NO;
+	response_msg_info.mPeerPort = OT_DEFAULT_COAP_PORT;
 
 	response_msg = otCoapNewMessage(ot_instance, NULL);
 	if (response_msg == NULL) {
@@ -481,6 +490,27 @@ void sendUdpTemperature(otInstance* aInstance) {
   }
 }
 
+uint8_t dbuf[37];
+uint8_t dkey[16];
+uint8_t dmyiv[12];
+uint8_t dobuf[32];
+void dummy_decrypt(void)
+{
+	libtock_led_on(3);
+	printf("running dummy decrypt\n");
+	uint32_t now = libtock_unsafe_now();
+	decrypt_packet_37b(
+		dkey,
+		dmyiv,
+		dbuf,
+		dobuf);
+	printf("dummy decrypt took %ld ms\n",
+		   (uint32_t) ((float) (libtock_unsafe_now() - now) / (float) 32.768));
+	libtock_led_off(3);
+
+	return;
+}
+
 static void __on_button_press(
 	__attribute__ ((unused)) returncode_t rc,
 	int button_no,
@@ -497,7 +527,10 @@ static void __on_button_press(
 		case 1:
 			sendUdpTemperature(g_ot_instance);
 			break;
-		/* case 1: */
+		case 2:
+			dummy_decrypt();
+			break;
+		/* case 3: */
 		/* 	otInstanceErasePersistentInfo(g_ot_instance); */
 		/* 	g_connected = false; */
 		/* 	while (true) {  } */
