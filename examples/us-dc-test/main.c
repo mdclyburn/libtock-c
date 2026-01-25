@@ -14,7 +14,8 @@
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
 
-void decrypt_64bytes_aes128_cbc(uint8_t* buffer, const uint8_t* key, const uint8_t* iv);
+/* void decrypt_64bytes_aes128_cbc(uint8_t* buffer, const uint8_t* key, const uint8_t* iv); */
+void aes128_cbc_mac_64bytes(const uint8_t* message, const uint8_t* key, uint8_t* mac_out);
 static void test_us_decrypt(void);
 static void test_us_decrypt_cb(int, int, int, void*);
 
@@ -55,8 +56,9 @@ void test_us_decrypt(void)
 	rc = libtock_aes_crypt();
 	printf("rc = %d\n");
 
-	decrypt_64bytes_aes128_cbc(
-		_g_crypt_src, _g_crypt_key, _g_crypt_iv);
+	/* decrypt_64bytes_aes128_cbc( */
+	/* 	_g_crypt_src, _g_crypt_key, _g_crypt_iv); */
+	aes128_cbc_mac_64bytes(_g_crypt_src, _g_crypt_key, _g_crypt_dst);
 	printf("decrypt finish at %ld\n", libtock_unsafe_now());
 
 	return;
@@ -69,24 +71,7 @@ static void test_us_decrypt_cb(int a, int b, int c, void* p) {  }
 
 // --- AES Constants and Lookups ---
 
-static const uint8_t sbox_inv[256] = {
-    0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
-    0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
-    0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
-    0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
-    0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
-    0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
-    0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
-    0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
-    0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
-    0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
-    0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
-    0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
-    0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
-    0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
-    0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
-    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
-};
+// Inverse S-box removed to save Flash memory (only needed for decryption)
 
 static const uint8_t sbox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -114,11 +99,10 @@ static const uint8_t rcon[11] = {
 // --- Helper Functions ---
 
 #define xtime(x) ((x<<1) ^ (((x>>7) & 1) * 0x1b))
-#define multiply(x,y) ( ((y & 1) * x) ^ ((y>>1 & 1) * xtime(x)) ^ ((y>>2 & 1) * xtime(xtime(x))) ^ ((y>>3 & 1) * xtime(xtime(xtime(x)))) ^ ((y>>4 & 1) * xtime(xtime(xtime(xtime(x))))))
 
 // Expands the 16-byte key into 176 bytes of round keys
 static void key_expansion(const uint8_t* key, uint8_t* round_keys) {
-    unsigned int i, j;
+    unsigned int i;
     uint8_t temp[4];
     uint8_t k;
 
@@ -129,27 +113,23 @@ static void key_expansion(const uint8_t* key, uint8_t* round_keys) {
 
     for (i = 16; i < 176; ++i) {
         if (i % 4 == 0) {
-            // Read previous 4 bytes into temp
             temp[0] = round_keys[i - 4];
             temp[1] = round_keys[i - 3];
             temp[2] = round_keys[i - 2];
             temp[3] = round_keys[i - 1];
 
             if (i % 16 == 0) {
-                // RotWord
                 k = temp[0];
                 temp[0] = temp[1];
                 temp[1] = temp[2];
                 temp[2] = temp[3];
                 temp[3] = k;
 
-                // SubWord
                 temp[0] = sbox[temp[0]];
                 temp[1] = sbox[temp[1]];
                 temp[2] = sbox[temp[2]];
                 temp[3] = sbox[temp[3]];
 
-                // Xor Rcon
                 temp[0] ^= rcon[i / 16];
             }
         }
@@ -157,107 +137,91 @@ static void key_expansion(const uint8_t* key, uint8_t* round_keys) {
     }
 }
 
-// Decrypts a single 16-byte block
-static void decrypt_single_block(const uint8_t* in, uint8_t* out, const uint8_t* round_keys) {
+// Encrypts a single 16-byte block
+static void encrypt_single_block(const uint8_t* in, uint8_t* out, const uint8_t* round_keys) {
     uint8_t state[16];
-    unsigned int i, j, round;
-    uint8_t t, u, v;
+    unsigned int i, round;
+    uint8_t t, tm, tmp;
 
-    for (i = 0; i < 16; ++i) {
-        state[i] = in[i];
-    }
+    for (i = 0; i < 16; ++i) state[i] = in[i];
 
-    // AddRoundKey (Round 10)
-    for (i = 0; i < 16; ++i) {
-        state[i] ^= round_keys[160 + i];
-    }
+    // AddRoundKey (Round 0)
+    for (i = 0; i < 16; ++i) state[i] ^= round_keys[i];
 
-    // Rounds 9 down to 1
-    for (round = 9; round > 0; --round) {
-        // InvShiftRows
-        t = state[1]; state[1] = state[13]; state[13] = state[9]; state[9] = state[5]; state[5] = t;
-        t = state[2]; state[2] = state[10]; state[10] = t;
-        t = state[6]; state[6] = state[14]; state[14] = t;
-        t = state[3]; state[3] = state[7]; state[7] = state[11]; state[11] = state[15]; state[15] = t;
+    // Rounds 1 to 9
+    for (round = 1; round <= 9; ++round) {
+        // SubBytes
+        for (i = 0; i < 16; ++i) state[i] = sbox[state[i]];
 
-        // InvSubBytes
-        for (i = 0; i < 16; ++i) {
-            state[i] = sbox_inv[state[i]];
+        // ShiftRows
+        t = state[1]; state[1] = state[5]; state[5] = state[9]; state[9] = state[13]; state[13] = t;
+        t = state[2]; state[2] = state[10]; state[10] = state[6]; state[6] = state[14]; state[14] = t; // Swap pairs
+        t = state[15]; state[15] = state[11]; state[11] = state[7]; state[7] = state[3]; state[3] = t;
+
+        // MixColumns
+        for (i = 0; i < 16; i += 4) {
+            t = state[i];
+            tmp = state[i] ^ state[i+1] ^ state[i+2] ^ state[i+3];
+            tm  = state[i] ^ state[i+1]; tm = xtime(tm); state[i] ^= tm ^ tmp;
+            tm  = state[i+1] ^ state[i+2]; tm = xtime(tm); state[i+1] ^= tm ^ tmp;
+            tm  = state[i+2] ^ state[i+3]; tm = xtime(tm); state[i+2] ^= tm ^ tmp;
+            tm  = state[i+3] ^ t;       tm = xtime(tm); state[i+3] ^= tm ^ tmp;
         }
 
         // AddRoundKey
-        for (i = 0; i < 16; ++i) {
-            state[i] ^= round_keys[round * 16 + i];
-        }
-
-        // InvMixColumns
-        for (i = 0; i < 16; i += 4) {
-            t = state[i];
-            u = state[i+1];
-            v = state[i+2];
-            uint8_t w = state[i+3];
-
-            state[i]   = multiply(t, 0x0e) ^ multiply(u, 0x0b) ^ multiply(v, 0x0d) ^ multiply(w, 0x09);
-            state[i+1] = multiply(t, 0x09) ^ multiply(u, 0x0e) ^ multiply(v, 0x0b) ^ multiply(w, 0x0d);
-            state[i+2] = multiply(t, 0x0d) ^ multiply(u, 0x09) ^ multiply(v, 0x0e) ^ multiply(w, 0x0b);
-            state[i+3] = multiply(t, 0x0b) ^ multiply(u, 0x0d) ^ multiply(v, 0x09) ^ multiply(w, 0x0e);
-        }
+        for (i = 0; i < 16; ++i) state[i] ^= round_keys[round * 16 + i];
     }
 
-    // Round 0
-    // InvShiftRows
-    t = state[1]; state[1] = state[13]; state[13] = state[9]; state[9] = state[5]; state[5] = t;
-    t = state[2]; state[2] = state[10]; state[10] = t;
-    t = state[6]; state[6] = state[14]; state[14] = t;
-    t = state[3]; state[3] = state[7]; state[7] = state[11]; state[11] = state[15]; state[15] = t;
+    // Round 10
+    // SubBytes
+    for (i = 0; i < 16; ++i) state[i] = sbox[state[i]];
 
-    // InvSubBytes
-    for (i = 0; i < 16; ++i) {
-        state[i] = sbox_inv[state[i]];
-    }
+    // ShiftRows
+    t = state[1]; state[1] = state[5]; state[5] = state[9]; state[9] = state[13]; state[13] = t;
+    t = state[2]; state[2] = state[10]; state[10] = state[6]; state[6] = state[14]; state[14] = t;
+    t = state[15]; state[15] = state[11]; state[11] = state[7]; state[7] = state[3]; state[3] = t;
 
     // AddRoundKey
-    for (i = 0; i < 16; ++i) {
-        out[i] = state[i] ^ round_keys[i];
-    }
+    for (i = 0; i < 16; ++i) out[i] = state[i] ^ round_keys[160 + i];
 }
 
 // --- Main API ---
 
 /**
- * Decrypts a fixed 64-byte buffer (4 blocks) in place using AES128-CBC.
+ * Generates an AES128-CBC-MAC for a fixed 64-byte message.
  *
- * @param buffer Pointer to the 64-byte buffer containing ciphertext.
- * Resulting plaintext overwrites this buffer.
- * @param key    16-byte AES key.
- * @param iv     16-byte Initialization Vector.
+ * Note: Plain CBC-MAC uses a Zero-IV.
+ *
+ * @param message Pointer to the 64-byte input buffer (read-only).
+ * @param key     16-byte AES key.
+ * @param mac_out Pointer to a 16-byte buffer where the result (Tag) will be stored.
  */
-void decrypt_64bytes_aes128_cbc(uint8_t* buffer, const uint8_t* key, const uint8_t* iv) {
+void aes128_cbc_mac_64bytes(const uint8_t* message, const uint8_t* key, uint8_t* mac_out) {
     uint8_t round_keys[176];
-    uint8_t block_tmp[16];
-    const uint8_t* xor_src;
+    uint8_t state[16];
 
     // Expand key schedule
     key_expansion(key, round_keys);
 
-    // Process blocks in reverse order (Block 3 -> 0) to allow in-place decryption
-    // Total blocks = 64 bytes / 16 bytes = 4 blocks. Indices 0, 1, 2, 3.
-    for (int i = 3; i >= 0; --i) {
-        uint8_t* current_block_ptr = buffer + (i * 16);
+    // Initialize state to 0 (Zero IV)
+    memset(state, 0, 16);
 
-        // Perform AES Core Decryption on current block
-        decrypt_single_block(current_block_ptr, block_tmp, round_keys);
+    // Process exactly 4 blocks (64 bytes / 16 bytes = 4)
+    for (int i = 0; i < 4; ++i) {
+        const uint8_t* current_block_ptr = message + (i * 16);
 
-        // Determine source for XOR (Previous ciphertext block or IV for the first block)
-        if (i == 0) {
-            xor_src = iv;
-        } else {
-            xor_src = buffer + ((i - 1) * 16);
-        }
-
-        // CBC XOR Step
+        // XOR Message block into current state (CBC step)
         for (int j = 0; j < 16; ++j) {
-            current_block_ptr[j] = block_tmp[j] ^ xor_src[j];
+            state[j] ^= current_block_ptr[j];
         }
+
+        // Encrypt the state (AES-128)
+        // We can pass state as both input and output for in-place encryption
+        encrypt_single_block(state, state, round_keys);
+    }
+
+    // Copy final state to output
+    for (int i = 0; i < 16; ++i) {
+        mac_out[i] = state[i];
     }
 }
