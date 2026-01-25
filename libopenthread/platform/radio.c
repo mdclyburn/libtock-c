@@ -170,12 +170,12 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame) {
   if (!otPlatRadioIsEnabled(aInstance)){
     otPlatRadioEnable(aInstance);
   }
-	if (ottock_latest_tx_done_at != 0) {
-		uint32_t n = libtock_unsafe_now();
-		printf("net stack duration: %ld us\n",
-			   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768));
-		ottock_latest_tx_done_at = 0;
-	}
+	/* if (ottock_latest_tx_done_at != 0) { */
+	/* 	uint32_t n = libtock_unsafe_now(); */
+	/* 	printf("net stack duration: %ld us\n", */
+	/* 		   (uint32_t) (((float) (libtock_unsafe_now() - ottock_latest_tx_done_at)) / (float) 0.032768)); */
+	/* 	ottock_latest_tx_done_at = 0; */
+	/* } */
 
   // The Tock raw 15.4 driver expects frames that do not include the MFR (aka
   // the CRC bytes). OpenThread gives us the full frame, so we just drop the
