@@ -26,7 +26,9 @@
 #include "coap.h"
 
 #define MAX_PAYLOAD_LEN ((uint32_t) 79)
-#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:f98f:94ee:9639:aab6"
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:d161:44a0:bcdd:9b4e"
+
+uint32_t bbb;
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
 static bool g_connected;
@@ -68,6 +70,7 @@ static void stateChangeCallback(uint32_t flags, void* context);
 static void print_ip_addr(otInstance* instance);
 
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
+	printf("bbb: %lx\n", &bbb);
 	for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
 		libtock_button_notify_on_press(i, __on_button_press);
 	}
@@ -422,7 +425,6 @@ const uint8_t coap_payload[] = {
 	// Payload marker
 	0xFF,
 	// Payload
-	0x11, 0x22, 0xA7, 0xB3,
 	0x11, 0x22, 0xA7, 0xB3,
 };
 

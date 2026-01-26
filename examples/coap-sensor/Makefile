@@ -9,7 +9,7 @@ TOCK_USERLAND_BASE_DIR = ../..
 C_SRCS := $(wildcard *.c)
 
 # Specify this app depends on the MTD OpenThread library.
-include $(TOCK_USERLAND_BASE_DIR)/libopenthread/libopenthread-mtd.mk
+# include $(TOCK_USERLAND_BASE_DIR)/libopenthread/libopenthread-mtd.mk
 
 # set stack size to 8000 to support openthread app
 STACK_SIZE:=8000
