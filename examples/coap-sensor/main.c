@@ -26,7 +26,7 @@
 #include "coap.h"
 
 #define MAX_PAYLOAD_LEN ((uint32_t) 79)
-#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:d161:44a0:bcdd:9b4e"
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:6587:f83c:5fb:36b7"
 
 uint32_t bbb;
 
@@ -485,6 +485,10 @@ static void __on_button_press(
 		/* 	g_connected = false; */
 		/* 	while (true) {  } */
 		/* 	break; */
+		case 3:
+			printf("Total active time: %ld ms\n",
+				   (uint32_t) (((float) bbb) / ((float) 32.768)));
+			break;
 		default:
 			break;
 		}
