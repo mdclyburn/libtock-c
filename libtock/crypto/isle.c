@@ -15,6 +15,32 @@ libtock_isle_allow_ro_set_in_buffer(
 }
 
 returncode_t
+libtock_isle_allow_ro_set_piv_buffer(
+	const uint8_t* buffer)
+{
+	allow_ro_return_t arval = allow_readonly(
+		DRIVER_NUM_ISLE,
+		ISLE_PIV_BUFFER,
+		(void*) buffer,
+		ISLE_PIV_BUFFER_LEN);
+
+	return tock_allow_ro_return_to_returncode(arval);
+}
+
+returncode_t
+libtock_isle_allow_ro_set_srchost_buffer(
+	const uint8_t* buffer)
+{
+	allow_ro_return_t arval = allow_readonly(
+		DRIVER_NUM_ISLE,
+		ISLE_SRC_BUFFER,
+		(void*) buffer,
+		ISLE_SRC_BUFFER_LEN);
+
+	return tock_allow_ro_return_to_returncode(arval);
+}
+
+returncode_t
 libtock_isle_allow_rw_set_out_buffer(
 	const uint8_t* out_buffer,
 	const uint32_t len)
@@ -69,28 +95,26 @@ libtock_isle_command_set_address(
 
 returncode_t
 libtock_isle_command_encrypt(
-	const uint32_t message_len,
-	const uint32_t aad_len)
+	uint64_t dst_host_lower)
 {
 	syscall_return_t crval = command(
 		DRIVER_NUM_ISLE,
 		ISLE_COMMAND_ENCRYPT,
-		message_len,
-		aad_len);
+	    ((uint32_t) (dst_host_lower & 0xFFFFFFFF)),
+		((uint32_t) ((dst_host_lower >> 32) & 0xFFFFFFFF)));
 
 	return tock_command_return_novalue_to_returncode(crval);
 }
 
 returncode_t
 libtock_isle_command_decrypt(
-	const uint32_t message_len,
-	const uint32_t aad_len)
+	const uint64_t src_host_lower)
 {
 	syscall_return_t crval = command(
 		DRIVER_NUM_ISLE,
 		ISLE_COMMAND_DECRYPT,
-		message_len,
-		aad_len);
+	    ((uint32_t) (src_host_lower & 0xFFFFFFFF)),
+		((uint32_t) ((src_host_lower >> 32) & 0xFFFFFFFF)));
 
 	return tock_command_return_novalue_to_returncode(crval);
 }

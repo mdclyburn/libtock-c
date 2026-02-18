@@ -26,7 +26,7 @@
 #include "coap.h"
 
 #define MAX_PAYLOAD_LEN ((uint32_t) 79)
-#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:6587:f83c:5fb:36b7"
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:b9c3:5ee4:5058:d52e"
 
 uint32_t bbb;
 
