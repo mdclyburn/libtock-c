@@ -15,20 +15,19 @@
 #include <openthread/thread.h>
 #include <openthread/udp.h>
 
+#include <libtock/tock.h>
+#include <libtock/crypto/isle.h>
 #include <libtock-sync/services/alarm.h>
 #include <libtock/kernel/ipc.h>
 #include <libtock/interface/button.h>
 #include <libtock/interface/led.h>
 #include <libtock/peripherals/gpio.h>
 #include <libtock/services/alarm.h>
-#include <libtock/tock.h>
 
 #include "coap.h"
 
 #define MAX_PAYLOAD_LEN ((uint32_t) 79)
-#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:b9c3:5ee4:5058:d52e"
-
-uint32_t bbb;
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:5257:60cc:c7de:7a6f"
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
 static bool g_connected;
@@ -55,6 +54,8 @@ void sendUdpTemperature(otInstance* aInstance);
 void announce_ip_address(void);
 
 static void __send_test_packet(void);
+static void __recv_test_packet(void);
+static void __recv_test_callback(int, int, int, void*);
 
 #define BUTTON_COUNT ((uint8_t) 4)
 
@@ -70,7 +71,6 @@ static void stateChangeCallback(uint32_t flags, void* context);
 static void print_ip_addr(otInstance* instance);
 
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
-	printf("bbb: %lx\n", &bbb);
 	for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
 		libtock_button_notify_on_press(i, __on_button_press);
 	}
@@ -256,26 +256,6 @@ static void stateChangeCallback(uint32_t flags, void* context) {
 		break;
     case OT_DEVICE_ROLE_CHILD:
 		g_connected = true;
-
-		// Add stable IP.
-		otNetifAddress stable_addr;
-		memset(&stable_addr, 0, sizeof(otNetifAddress));
-		stable_addr.mMeshLocal = true;
-		stable_addr.mValid = true;
-		stable_addr.mPrefixLength = 64;
-		stable_addr.mPreferred = true;
-		stable_addr.mAddressOrigin = OT_ADDRESS_ORIGIN_MANUAL;
-		memcpy(stable_addr.mAddress.mFields.m8, stable_addr_upper, sizeof(stable_addr_upper));
-		memcpy(stable_addr.mAddress.mFields.m8 + 8,
-			   ((const uint8_t* const) 0x10000000) + 0xA4,
-			   8);
-		oerr = otIp6AddUnicastAddress(
-			instance,
-			&stable_addr);
-		if (oerr != OT_ERROR_NONE) {
-			printf("failed to add stable address: %d\n", oerr);
-		}
-
 		printf("[State Change] - Child.\n");
 		printf("Successfully attached to Thread network as a child.\n");
 		print_ip_addr(instance);
@@ -475,7 +455,8 @@ static void __on_button_press(
 
 		switch(button_no) {
 		case 0:
-			__send_test_packet();
+			/* __send_test_packet(); */
+			__recv_test_packet();
 			break;
 		case 1:
 			sendUdpTemperature(g_ot_instance);
@@ -486,8 +467,8 @@ static void __on_button_press(
 		/* 	while (true) {  } */
 		/* 	break; */
 		case 3:
-			printf("Total active time: %ld ms\n",
-				   (uint32_t) (((float) bbb) / ((float) 32.768)));
+			/* printf("Total active time: %ld ms\n", */
+			/* 	   (uint32_t) (((float) bbb) / ((float) 32.768))); */
 			break;
 		default:
 			break;
@@ -505,10 +486,10 @@ static void __send_test_packet(void)
 	otMessageInfo msg_info;
 	otIp6Address dst_addr;
 
-	if (!g_connected) {
-		printf("Cannot send. Not connected yet...\n");
-		return;
-	}
+	/* if (!g_connected) { */
+	/* 	printf("Cannot send. Not connected yet...\n"); */
+	/* 	return; */
+	/* } */
 
 	printf("Initiating send.\n");;
 
@@ -521,9 +502,9 @@ static void __send_test_packet(void)
 		return;
 	}
 
-	if (!g_connected) {
-		return;
-	}
+	/* if (!g_connected) { */
+	/* 	return; */
+	/* } */
 
 	memset(&msg_info, 0, sizeof(msg_info));
 
@@ -564,6 +545,60 @@ static void __send_test_packet(void)
 	}
 	/* libtock_gpio_toggle(0); */
 
+	return;
+}
+
+uint8_t __recv_ct_buffer[32];
+uint8_t __recv_pt_buffer[40];
+uint8_t __recv_piv_buffer[4];
+uint8_t __recv_src_buffer[8];
+bool __recv_waiting;
+
+void __recv_test_packet(void)
+{
+	// Share the buffers with the OS.
+	libtock_isle_allow_ro_set_in_buffer(
+		__recv_ct_buffer,
+		sizeof(__recv_ct_buffer));
+	libtock_isle_allow_rw_set_out_buffer(
+		__recv_pt_buffer,
+		sizeof(__recv_pt_buffer));
+	libtock_isle_allow_ro_set_piv_buffer(
+		__recv_piv_buffer);
+	libtock_isle_allow_ro_set_srchost_buffer(
+		__recv_src_buffer);
+
+	// Set the callback.
+	libtock_isle_subscribe_out_message_ready(
+		__recv_test_callback);
+
+	// Call for decryption.
+	returncode_t rc = libtock_isle_command_decrypt(
+		0xFEFEFEFEABABABAB);
+	printf("OS decrypt_recv: %d\n", rc);
+
+	// Wait for the OS to report being finished.
+	__recv_waiting = true;
+	while (__recv_waiting) {
+		yield();
+	}
+
+	// Get buffers back from the OS.
+	libtock_isle_allow_ro_set_in_buffer(NULL, 0);
+	libtock_isle_allow_rw_set_out_buffer(NULL, 0);
+	libtock_isle_allow_ro_set_piv_buffer(NULL);
+	libtock_isle_allow_ro_set_srchost_buffer(NULL);
+
+	return;
+}
+
+void __recv_test_callback(
+	int result,
+	int message_len,
+	int arg3,
+	void* data)
+{
+	__recv_waiting = false;
 	return;
 }
 
