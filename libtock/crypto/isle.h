@@ -14,8 +14,7 @@ extern "C" {
 
 #define ISLE_COMMAND_ENCRYPT ((uint32_t) 1)
 #define ISLE_COMMAND_DECRYPT ((uint32_t) 2)
-#define ISLE_COMMAND_SET_ADDRESS_LOWER ((uint32_t) 10)
-#define ISLE_COMMAND_SET_ADDRESS_UPPER ((uint32_t) 20)
+#define ISLE_COMMAND_GET_REALM_INFO ((uint32_t) 10)
 
 #define ISLE_IN_BUFFER  ((uint32_t) 0)
 #define ISLE_PIV_BUFFER ((uint32_t) 1)
@@ -64,6 +63,16 @@ libtock_isle_command_encrypt(
 returncode_t
 libtock_isle_command_decrypt(
     const uint64_t src_host_lower);
+
+returncode_t
+libtock_isle_command_realm_id(
+	const uint32_t realm_idx,
+	uint16_t* const realm_id);
+
+returncode_t
+libtock_isle_command_host_network_no(
+	const uint32_t realm_idx,
+	uint64_t* const host_network_no);
 
 #ifdef __cplusplus
 }
