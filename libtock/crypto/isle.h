@@ -58,11 +58,11 @@ libtock_isle_subscribe_out_message_ready(
 
 returncode_t
 libtock_isle_command_encrypt(
-	const uint64_t dst_host_lower);
+	const uint64_t dst_host);
 
 returncode_t
 libtock_isle_command_decrypt(
-    const uint64_t src_host_lower);
+    const uint64_t src_host);
 
 returncode_t
 libtock_isle_command_realm_id(

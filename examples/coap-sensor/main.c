@@ -27,7 +27,7 @@
 #include "coap.h"
 
 #define MAX_PAYLOAD_LEN ((uint32_t) 79)
-#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:5257:60cc:c7de:7a6f"
+#define EXP_DEST_ADDR "fd74:42e:17e:e1ae:fe5a:60cc:c7de:7a6f"
 
 uint8_t _g_payload_buffer[MAX_PAYLOAD_LEN];
 static bool g_connected;
@@ -455,8 +455,8 @@ static void __on_button_press(
 
 		switch(button_no) {
 		case 0:
-			/* __send_test_packet(); */
-			__recv_test_packet();
+			__send_test_packet();
+			/* __recv_test_packet(); */
 			break;
 		case 1:
 			sendUdpTemperature(g_ot_instance);
@@ -486,10 +486,10 @@ static void __send_test_packet(void)
 	otMessageInfo msg_info;
 	otIp6Address dst_addr;
 
-	/* if (!g_connected) { */
-	/* 	printf("Cannot send. Not connected yet...\n"); */
-	/* 	return; */
-	/* } */
+	if (!g_connected) {
+		printf("Cannot send. Not connected yet...\n");
+		return;
+	}
 
 	printf("Initiating send.\n");;
 

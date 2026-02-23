@@ -71,26 +71,26 @@ libtock_isle_subscribe_out_message_ready(
 
 returncode_t
 libtock_isle_command_encrypt(
-	uint64_t dst_host_lower)
+	uint64_t dst_host)
 {
 	syscall_return_t crval = command(
 		DRIVER_NUM_ISLE,
 		ISLE_COMMAND_ENCRYPT,
-	    ((uint32_t) (dst_host_lower & 0xFFFFFFFF)),
-		((uint32_t) ((dst_host_lower >> 32) & 0xFFFFFFFF)));
+	    ((uint32_t) (dst_host & 0xFFFFFFFF)),
+		((uint32_t) ((dst_host >> 32) & 0xFFFFFFFF)));
 
 	return tock_command_return_novalue_to_returncode(crval);
 }
 
 returncode_t
 libtock_isle_command_decrypt(
-	const uint64_t src_host_lower)
+	const uint64_t src_host)
 {
 	syscall_return_t crval = command(
 		DRIVER_NUM_ISLE,
 		ISLE_COMMAND_DECRYPT,
-	    ((uint32_t) (src_host_lower & 0xFFFFFFFF)),
-		((uint32_t) ((src_host_lower >> 32) & 0xFFFFFFFF)));
+	    ((uint32_t) (src_host & 0xFFFFFFFF)),
+		((uint32_t) ((src_host >> 32) & 0xFFFFFFFF)));
 
 	return tock_command_return_novalue_to_returncode(crval);
 }
