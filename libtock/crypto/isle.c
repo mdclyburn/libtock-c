@@ -15,20 +15,6 @@ libtock_isle_allow_ro_set_in_buffer(
 }
 
 returncode_t
-libtock_isle_allow_ro_set_piv_buffer(
-	const uint8_t* buffer)
-{
-	const uint32_t len = (buffer == NULL ? 0 : ISLE_PIV_BUFFER_LEN);
-	allow_ro_return_t arval = allow_readonly(
-		DRIVER_NUM_ISLE,
-		ISLE_PIV_BUFFER,
-		(void*) buffer,
-	    len);
-
-	return tock_allow_ro_return_to_returncode(arval);
-}
-
-returncode_t
 libtock_isle_allow_ro_set_srchost_buffer(
 	const uint8_t* buffer)
 {
@@ -52,6 +38,20 @@ libtock_isle_allow_rw_set_out_buffer(
 		ISLE_OUT_BUFFER,
 		(void*) out_buffer,
 		len);
+
+	return tock_allow_rw_return_to_returncode(arval);
+}
+
+returncode_t
+libtock_isle_allow_rw_set_piv_buffer(
+	const uint8_t* buffer)
+{
+	const uint32_t len = (buffer == NULL ? 0 : ISLE_PIV_BUFFER_LEN);
+	allow_rw_return_t arval = allow_readwrite(
+		DRIVER_NUM_ISLE,
+		ISLE_PIV_BUFFER,
+		(void*) buffer,
+	    len);
 
 	return tock_allow_rw_return_to_returncode(arval);
 }
