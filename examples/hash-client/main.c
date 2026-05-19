@@ -81,9 +81,9 @@ on_digest_upcall(
 	void* step)
 {
 	if ((uint32_t) step == 0) {
-		printf("digest addition finished: %d\n", status);
+		printf("[app] digest addition finished; status : %d\n", status);
 	} else if ((uint32_t) step == 1) {
-		printf("digest calculation finished: %d\n", status);
+		printf("[app] digest calculation finished; status: %d\n", status);
 	}
 
 	g_next = true;
