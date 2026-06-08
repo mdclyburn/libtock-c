@@ -3,13 +3,15 @@
 #include <string.h>
 
 #include <libtock/tock.h>
+#include <libtock/peripherals/gpio.h>
 #include <libtock/services/userv.h>
 
-#define OP_ADD_DATA ((uint32_t) 0x02)
 #define OP_RUN      ((uint32_t) 0x01)
+#define OP_ADD_DATA ((uint32_t) 0x02)
 #define OP_VERIFY   ((uint32_t) 0x03)
+#define OP_CLEAR    ((uint32_t) 0x11)
 
-#define ARG_BUFFER_LEN ((uint32_t) 128)
+#define ARG_BUFFER_LEN ((uint32_t) 256)
 
 uint8_t arg_buffer_0[ARG_BUFFER_LEN];
 uint8_t arg_buffer_1[ARG_BUFFER_LEN];
@@ -17,6 +19,7 @@ uint8_t arg_buffer_2[ARG_BUFFER_LEN];
 
 uint8_t res_buffer_0[ARG_BUFFER_LEN];
 
+void allow_buffers(void);
 void succeed_or_hang(returncode_t, const char* const);
 void usercall(int a_operation_id, int arg1, int arg2, void* data);
 
@@ -33,8 +36,30 @@ void sha256_transform(uint32_t state[8], const uint8_t buffer[64]);
 void sha256_update(SHA256_Ctx* ctx, const uint8_t* data, uint32_t len);
 void sha256_final(SHA256_Ctx* ctx, uint8_t digest[32]);
 
+/* void test_hash(void); */
+
+/* void test_hash(void) */
+/* { */
+/* 	libtock_gpio_enable_output(0); */
+/* 	volatile uint32_t* const gpio = (uint32_t*) (0x50000300 + 0x0504); */
+
+/* 	*gpio |= (1 << 1); */
+/* 	sha256_init(&global_sha256_context); */
+/* 	for (uint32_t i = 0; i < 4; i++) */
+/* 	{ */
+/* 		sha256_update(&global_sha256_context, arg_buffer_0, 64); */
+/* 	} */
+
+/* 	sha256_final(&global_sha256_context, res_buffer_0); */
+/* 	*gpio ^= (1 << 1); */
+
+/* 	return; */
+/* } */
+
 int main(void)
 {
+	/* test_hash(); */
+
 	// Initialize the cryptographic context on startup
 	sha256_init(&global_sha256_context);
 
@@ -82,11 +107,6 @@ void usercall(
 	printf("[digest-userv] usercall 0x%x\n", a_operation_id);
 
 	// Re-take ownership of argument buffers.
-	uint8_t* arg_buffers[3] = {
-		arg_buffer_0,
-		arg_buffer_1,
-		arg_buffer_2
-	};
 	for (uint8_t i = 0; i < 3; i++)
 	{
 		succeed_or_hang(
@@ -102,14 +122,17 @@ void usercall(
 		const uint32_t input_data_len = (uint32_t)arg1;
 
 		if (input_data_len > ARG_BUFFER_LEN) {
-			libtock_userv_usercall_return_error(RETURNCODE_EINVAL);
+			libtock_userv_usercall_return_error(TOCK_STATUSCODE_INVAL);
 			break;
 		}
 
 		// Update the context incrementally with incoming buffer segments
 		sha256_update(&global_sha256_context, input_data, input_data_len);
 
+		allow_buffers();
+		printf("[digest-userv] reporting add data done\n");
 		libtock_userv_usercall_return();
+		/* libtock_userv_usercall_return_error(TOCK_STATUSCODE_INVAL); */
 		break;
 	}
 	case OP_RUN:
@@ -130,19 +153,45 @@ void usercall(
 				digest_output,
 				digest_len),
 			"setting result buffer");
+		allow_buffers();
+		printf("[digest-userv] reporting run done\n");
 		libtock_userv_usercall_return();
 
 		break;
 	}
+	case OP_CLEAR:
+		memset(arg_buffer_0, 0x00, ARG_BUFFER_LEN);
+		memset(arg_buffer_1, 0x00, ARG_BUFFER_LEN);
+		memset(arg_buffer_2, 0x00, ARG_BUFFER_LEN);
+		memset(res_buffer_0, 0x00, ARG_BUFFER_LEN);
+
+		allow_buffers();
+		printf("[digest-userv] reporting clear done\n");
+		libtock_userv_usercall_return();
+
+		break;
 	case OP_VERIFY:
 	default:
 		libtock_userv_usercall_return_error(
-			RETURNCODE_ENOSUPPORT);
+			TOCK_STATUSCODE_NOSUPPORT);
 
 		break;
 	}
 
-	// Offer the argument buffers for the next usercall.
+	printf("ready for next call\n");
+
+	return;
+}
+
+/// Offer the argument buffers for the next usercall.
+void allow_buffers(void)
+{
+	uint8_t* arg_buffers[3] = {
+		arg_buffer_0,
+		arg_buffer_1,
+		arg_buffer_2
+	};
+
 	for (uint32_t i = 0; i < 3; i++)
 	{
 		succeed_or_hang(
