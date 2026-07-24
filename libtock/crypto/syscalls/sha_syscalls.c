@@ -39,7 +39,7 @@ returncode_t libtock_sha_command_set_algorithm(uint8_t hash) {
 }
 
 returncode_t libtock_sha_command_run(void) {
-  syscall_return_t cval = command(DRIVER_NUM_SHA, 1, 0, 0);
+  syscall_return_t cval = command(DRIVER_NUM_SHA, TOCK_SHA_HASH, 0, 0);
   return tock_command_return_novalue_to_returncode(cval);
 }
 

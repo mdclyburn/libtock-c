@@ -28,36 +28,46 @@ int main(void)
 	}
 	else
 	{
+		/* printf("SHA driver exists.\n"); */
+
+		/* printf("Setting SHA upcall.\n"); */
 		succeed_or_hang(
 			libtock_sha_set_upcall(on_digest_upcall, (void*) ((uint32_t) 0)),
 			"set done upcall");
-		succeed_or_hang(
-			libtock_sha_set_add_upcall(on_digest_upcall, (void*) ((uint32_t) 1)),
-			"set add upcall");
+		/** This now fails with ENOSUPPORT.
+		 * Does the driver no longer support adding data in increments to the hasher?
+		 */
+		/* succeed_or_hang( */
+		/* 	libtock_sha_set_add_upcall(on_digest_upcall, (void*) ((uint32_t) 1)), */
+		/* 	"set add upcall"); */
 
+		/* printf("Setting digest output buffer.\n"); */
 		succeed_or_hang(
 			libtock_sha_set_readwrite_allow_destination_buffer(g_hash, sizeof(g_hash)),
 			"set readwrite hash buffer");
 
-		for (uint8_t i = 0; i < 4; i++)
+		for (uint8_t i = 0; i < 1; i++)
 		{
+			/* printf("Setting data buffer.\n"); */
 			succeed_or_hang(
-				libtock_sha_set_readonly_allow_data_buffer(g_data + (64 * i), 64),
+				libtock_sha_set_readonly_allow_data_buffer(g_data + (64 * i), 256),
 				"set readonly data buffer");
-			succeed_or_hang(
-				libtock_sha_command_update(),
-				"update data");
+			/* succeed_or_hang( */
+			/* 	libtock_sha_command_update(), */
+			/* 	"update data"); */
 
-			while (!g_next) { yield(); }
-			g_next = false;
+			/* while (!g_next) { yield(); } */
+			/* g_next = false; */
 
-			succeed_or_hang(
-				libtock_sha_set_readonly_allow_data_buffer(NULL, 0),
-				"set readonly data buffer");
+			/* succeed_or_hang( */
+			/* 	libtock_sha_set_readonly_allow_data_buffer(NULL, 0), */
+			/* 	"set readonly data buffer"); */
 		}
+		/* printf("Running hash.\n"); */
 		succeed_or_hang(
 			libtock_sha_command_run(),
 			"run digest");
+		/* printf("Waiting for hash to complete."); */
 		while (!g_next) { yield(); }
 		g_next = false;
 
