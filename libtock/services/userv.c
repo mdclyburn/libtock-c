@@ -32,6 +32,38 @@ libtock_userv_unset_arg_buffer_n(
 	return rc;
 }
 
+
+
+returncode_t libtock_userv_set_result_buffer_n(
+	uint32_t buffer_no,
+	uint8_t* res_buffer,
+	uint32_t buffer_len)
+{
+	returncode_t rc =
+		tock_allow_ro_return_to_returncode(
+			allow_readonly(
+				DRIVER_NUM_USERV,
+				buffer_no,
+				(void*) res_buffer,
+				buffer_len));
+
+	return rc;
+}
+
+returncode_t libtock_userv_unset_result_buffer_n(
+	uint32_t buffer_no)
+{
+	returncode_t rc =
+		tock_allow_ro_return_to_returncode(
+			allow_readonly(
+				DRIVER_NUM_USERV,
+				buffer_no,
+			    NULL,
+			    0));
+
+	return rc;
+}
+
 returncode_t
 libtock_userv_register(
 	const uint32_t role_id,
@@ -68,7 +100,7 @@ libtock_userv_usercall_return(void)
 	return tock_command_return_novalue_to_returncode(
 		command(
 			DRIVER_NUM_USERV,
-			LIBTOCK_USERV_COMMAND_RETURN_SUCCESS,
+		    LIBTOCK_USERV_COMMAND_RETURN_SUCCESS,
 			0,
 			0));
 }
@@ -81,7 +113,7 @@ libtock_userv_usercall_return_direct(
 	return tock_command_return_novalue_to_returncode(
 		command(
 			DRIVER_NUM_USERV,
-			LIBTOCK_USERV_COMMAND_RETURN_SUCCESS,
+		    LIBTOCK_USERV_COMMAND_RETURN_SUCCESS,
 			val1,
 			val2));
 }
