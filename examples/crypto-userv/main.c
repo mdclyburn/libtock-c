@@ -9,32 +9,20 @@
 #include "ascon.h"
 
 #define ARG_BUFFER_CRYPT_DATA_LEN ((uint32_t)82)
-#define ARG_BUFFER_PLAINTEXT_LEN (ARG_BUFFER_CRYPT_DATA_LEN)
-#define ARG_BUFFER_CIPHERTEXT_LEN (ARG_BUFFER_PLAINTEXT_LEN)
+#define ARG_BUFFER_INPUT_LEN (ARG_BUFFER_CRYPT_DATA_LEN)
+#define ARG_BUFFER_OUTPUT_LEN (ARG_BUFFER_CRYPT_DATA_LEN)
 #define ARG_BUFFER_KEY_LEN ((uint32_t)18)
 #define ARG_BUFFER_NONCE_LEN ((uint32_t)18)
 #define ARG_BUFFER_AAD_LEN ((uint32_t)34)
-#define ARG_BUFFER_TAG_LEN ((uint32_t)10)
+#define ARG_BUFFER_TAG_LEN ((uint32_t)18)
 
-const uint32_t argbno_plaintext = 0x00;
-uint8_t argb_plaintext[ARG_BUFFER_PLAINTEXT_LEN];
-
-const uint32_t argbno_ciphertext = 0x01;
-uint8_t argb_ciphertext[ARG_BUFFER_CIPHERTEXT_LEN];
-
-const uint32_t argbno_key = 0x02;
+uint8_t argb_input[ARG_BUFFER_INPUT_LEN];
 uint8_t argb_key[ARG_BUFFER_KEY_LEN];
-
-const uint32_t argbno_nonce = 0x03;
 uint8_t argb_nonce[ARG_BUFFER_NONCE_LEN];
-
-const uint32_t argbno_aad = 0x04;
 uint8_t argb_aad[ARG_BUFFER_AAD_LEN];
-
-const uint32_t argbno_tag = 0x05;
 uint8_t argb_tag[ARG_BUFFER_TAG_LEN];
 
-uint8_t resb_cryptout[ARG_BUFFER_CRYPT_DATA_LEN];
+uint8_t resb_output[ARG_BUFFER_OUTPUT_LEN];
 uint8_t resb_tag[ARG_BUFFER_TAG_LEN];
 
 #define OP_PADDING_SIZE ((uint32_t)0x01)
@@ -87,18 +75,14 @@ __usercall(
 
   case OP_PADDING_CALC: {
     const uint32_t pt_len = (uint32_t)arg1;
-    const uint32_t padded_len = (padded_len % 8 != 0)
-                                    ? padded_len + (pt_len % PADDING_SIZE_BYTES)
-                                    : padded_len;
+    const uint32_t padded_len = 
+      (pt_len % PADDING_SIZE_BYTES != 0) ? pt_len + (pt_len % PADDING_SIZE_BYTES) : pt_len;
 
     libtock_userv_usercall_return_direct(padded_len, 0);
 
     break;
   }
   case OP_ENCRYPT: {
-    const uint32_t message_len = arg1;
-    const uint32_t aad_len = arg2;
-
     returncode_t rc = run_encrypt();
     offer_userv_arg_buffers();
 
@@ -118,24 +102,62 @@ __usercall(
 
 /** Offer or claim argument buffers to/from the kernel.
  */
-static void __allow_op_arg_buffers(bool reclaim) {
-  const uint8_t* const argbnos[] = {argb_plaintext, argb_ciphertext, argb_aad,
-                              argb_key,       argb_nonce,      argb_tag};
-  const uint32_t argbnos_len[] = {
-      ARG_BUFFER_PLAINTEXT_LEN, ARG_BUFFER_CIPHERTEXT_LEN, ARG_BUFFER_AAD_LEN,
-      ARG_BUFFER_KEY_LEN,       ARG_BUFFER_NONCE_LEN,      ARG_BUFFER_TAG_LEN};
+static void
+__allow_op_arg_buffers(
+  bool reclaim
+) 
+{
+  // The argument/result buffers and their ordering.
+  const uint8_t* const argbnos[] = {
+    argb_input,
+    argb_aad,
+    argb_key,
+    argb_nonce,
+    argb_tag,
+  };
+  const uint8_t* const resbnos[] = {
+    resb_output,
+    resb_tag,
+  };
 
-  for (uint32_t i = 0; i < sizeof(argbnos) / sizeof(argbnos[0]); i++) {
+  const uint32_t argbnos_len[] = {
+      ARG_BUFFER_INPUT_LEN,
+      ARG_BUFFER_AAD_LEN,
+      ARG_BUFFER_KEY_LEN,
+      ARG_BUFFER_NONCE_LEN,
+      ARG_BUFFER_TAG_LEN,
+    };
+  const uint32_t resbnos_len[] = {
+    ARG_BUFFER_OUTPUT_LEN,
+    ARG_BUFFER_TAG_LEN,
+  };
+
+  for (uint32_t i = 0; i < sizeof(argbnos) / sizeof(argbnos[0]); i++)
+  {
     const uint32_t buffer_len = reclaim ? 0 : argbnos_len[i];
     returncode_t rc = tock_allow_rw_return_to_returncode(
         allow_readwrite(DRIVER_NUM_USERV, i, ((void *) argbnos[i]), buffer_len));
 
-    if (rc != RETURNCODE_SUCCESS) {
-      printf("failed to offer/claim argument buffer %ld\n", argbnos[i]);
-      while (true)
-        ;
+    if (rc != RETURNCODE_SUCCESS)
+    {
+      printf("failed to offer/claim argument buffer %d\n", i);
+      while (true);
     }
   }
+
+  for (uint32_t i = 0; i < sizeof(resbnos) / sizeof(resbnos[0]); i++) {
+    const uint32_t buffer_len = reclaim ? 0 : resbnos_len[i];
+    returncode_t rc = tock_allow_ro_return_to_returncode(
+        allow_readonly(DRIVER_NUM_USERV, i, ((void *) resbnos[i]), buffer_len));
+
+    if (rc != RETURNCODE_SUCCESS)
+    {
+      printf("failed to offer/claim result buffer %d\n", i);
+      while (true);
+    }
+  }
+
+  return;
 }
 
 void offer_userv_arg_buffers(void) {
@@ -161,15 +183,20 @@ void claim_userv_arg_buffers(void) {
 */
 returncode_t run_encrypt(void) {
   uint32_t out_ct_len;
-  int32_t err = ascon_encrypt(argb_key, argb_nonce, argb_plaintext,
-                              argb_plaintext[ARG_BUFFER_PLAINTEXT_LEN - 1],
-                              argb_aad, argb_aad[ARG_BUFFER_AAD_LEN - 1],
-                              argb_ciphertext, &out_ct_len);
+  int32_t err = ascon_encrypt(
+    argb_key, 
+    argb_nonce, 
+    argb_input,
+    argb_input[ARG_BUFFER_INPUT_LEN - 1],
+    argb_aad, argb_aad[ARG_BUFFER_AAD_LEN - 1],
+    resb_output, &out_ct_len
+  );
 
   if (out_ct_len > UINT8_MAX) {
     return RETURNCODE_ESIZE;
   }
-  argb_ciphertext[ARG_BUFFER_CIPHERTEXT_LEN - 1] = (uint8_t)out_ct_len;
+  resb_output[ARG_BUFFER_OUTPUT_LEN - 1] = (uint8_t) out_ct_len;
+  resb_tag[ARG_BUFFER_TAG_LEN - 1] = (uint8_t) 16;
 
   return RETURNCODE_SUCCESS;
 }
