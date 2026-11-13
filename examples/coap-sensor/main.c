@@ -112,12 +112,6 @@ int main(__attribute__((unused)) int argc,
     libtocksync_alarm_delay_ms(100);
   }
 
-  uint32_t counter_freq;
-  uint32_t last_announce;
-  libtock_alarm_command_get_frequency(&counter_freq);
-  libtock_alarm_command_read(&last_announce);
-  printf("counter freq.: %ld\n", counter_freq);
-
   //
   ////////////////////////////////////////////////////
 

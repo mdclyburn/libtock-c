@@ -37,7 +37,13 @@ void __usercall(int a_operation_id, int arg1, int arg2, void *data);
 void offer_userv_arg_buffers(void);
 void claim_userv_arg_buffers(void);
 
-returncode_t run_encrypt(void);
+returncode_t run_encrypt(
+  const uint32_t plaintext_len,
+  const uint32_t aad_len,
+  uint32_t* const ciphertext_len,
+  uint32_t* const tag_len
+);
+returncode_t run_decrypt(void);
 
 int main(void) {
   returncode_t rc;
@@ -83,10 +89,23 @@ __usercall(
     break;
   }
   case OP_ENCRYPT: {
-    returncode_t rc = run_encrypt();
+    const uint32_t plaintext_len = (uint32_t) arg1;
+    const uint32_t aad_len = (uint32_t) arg2;
+    uint32_t ciphertext_len, tag_len;
+
+    returncode_t rc = run_encrypt(plaintext_len, aad_len, &ciphertext_len, &tag_len);
+
     offer_userv_arg_buffers();
 
-    libtock_userv_usercall_return();
+    if (rc == RETURNCODE_SUCCESS)
+    {
+      libtock_userv_usercall_return_direct(ciphertext_len, tag_len);
+    }
+    else
+    {
+      libtock_userv_usercall_return_error((uint32_t) rc);
+    }
+
     break;
   }
   case OP_DECRYPT:
@@ -140,7 +159,7 @@ __allow_op_arg_buffers(
 
     if (rc != RETURNCODE_SUCCESS)
     {
-      printf("failed to offer/claim argument buffer %d\n", i);
+      printf("failed to offer/claim argument buffer %ld\n", i);
       while (true);
     }
   }
@@ -152,7 +171,7 @@ __allow_op_arg_buffers(
 
     if (rc != RETURNCODE_SUCCESS)
     {
-      printf("failed to offer/claim result buffer %d\n", i);
+      printf("failed to offer/claim result buffer %ld\n", i);
       while (true);
     }
   }
@@ -181,24 +200,35 @@ void claim_userv_arg_buffers(void) {
    - OU: ciphertext (length byte + data)
    - OU: AAD tag
 */
-returncode_t run_encrypt(void) {
-  uint32_t out_ct_len;
+returncode_t run_encrypt(
+  const uint32_t plaintext_len,
+  const uint32_t aad_len,
+  uint32_t* const ciphertext_len,
+  uint32_t* const tag_len
+)
+{
   int32_t err = ascon_encrypt(
-    argb_key, 
-    argb_nonce, 
+    argb_key,
+    argb_nonce,
     argb_input,
-    argb_input[ARG_BUFFER_INPUT_LEN - 1],
-    argb_aad, argb_aad[ARG_BUFFER_AAD_LEN - 1],
-    resb_output, &out_ct_len
+    plaintext_len,
+    argb_aad,
+    aad_len,
+    resb_output,
+    ciphertext_len
   );
 
-  if (out_ct_len > UINT8_MAX) {
-    return RETURNCODE_ESIZE;
-  }
-  resb_output[ARG_BUFFER_OUTPUT_LEN - 1] = (uint8_t) out_ct_len;
-  resb_tag[ARG_BUFFER_TAG_LEN - 1] = (uint8_t) 16;
+  if (err == 0)
+  {
+    *tag_len = 16;
+    printf("ct len: %ld, tag len: %d\n", *ciphertext_len, 16);
 
-  return RETURNCODE_SUCCESS;
+    return RETURNCODE_SUCCESS;
+  }
+  else
+  {
+    return RETURNCODE_FAIL;
+  }
 }
 
 /**
