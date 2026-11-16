@@ -40,8 +40,7 @@ void claim_userv_arg_buffers(void);
 returncode_t run_encrypt(
   const uint32_t plaintext_len,
   const uint32_t aad_len,
-  uint32_t* const ciphertext_len,
-  uint32_t* const tag_len
+  uint32_t* const ciphertext_len
 );
 returncode_t run_decrypt(void);
 
@@ -91,15 +90,15 @@ __usercall(
   case OP_ENCRYPT: {
     const uint32_t plaintext_len = (uint32_t) arg1;
     const uint32_t aad_len = (uint32_t) arg2;
-    uint32_t ciphertext_len, tag_len;
+    uint32_t ciphertext_len;
 
-    returncode_t rc = run_encrypt(plaintext_len, aad_len, &ciphertext_len, &tag_len);
+    returncode_t rc = run_encrypt(plaintext_len, aad_len, &ciphertext_len);
 
     offer_userv_arg_buffers();
 
     if (rc == RETURNCODE_SUCCESS)
     {
-      libtock_userv_usercall_return_direct(ciphertext_len, tag_len);
+      libtock_userv_usercall_return_direct(ciphertext_len, ASCON_TAG_SIZE);
     }
     else
     {
@@ -193,18 +192,15 @@ void claim_userv_arg_buffers(void) {
 
 /**
    Buffers:
-   - IN: encrypting key
-   - IN: nonce
-   - IN: plaintext (length byte + data)
-   - IN: additional data (length byte + data)
-   - OU: ciphertext (length byte + data)
+   - IN: plaintext data
+   - IN: additional data
+   - OU: ciphertext data
    - OU: AAD tag
 */
 returncode_t run_encrypt(
   const uint32_t plaintext_len,
   const uint32_t aad_len,
-  uint32_t* const ciphertext_len,
-  uint32_t* const tag_len
+  uint32_t* const ciphertext_len
 )
 {
   int32_t err = ascon_encrypt(
@@ -220,8 +216,10 @@ returncode_t run_encrypt(
 
   if (err == 0)
   {
-    *tag_len = 16;
-    printf("ct len: %ld, tag len: %d\n", *ciphertext_len, 16);
+    printf("ct len: %lu, tag len: %u\n", *ciphertext_len - ASCON_TAG_SIZE, ASCON_TAG_SIZE);
+
+    // Copy AAD tag to the result buffer.
+    memcpy(resb_tag, (uint8_t*) (resb_output + *ciphertext_len), ASCON_TAG_SIZE);
 
     return RETURNCODE_SUCCESS;
   }
