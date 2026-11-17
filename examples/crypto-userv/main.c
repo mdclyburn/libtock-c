@@ -219,6 +219,7 @@ returncode_t run_encrypt(
     printf("ct len: %lu, tag len: %u\n", *ciphertext_len - ASCON_TAG_SIZE, ASCON_TAG_SIZE);
 
     // Copy AAD tag to the result buffer.
+    *ciphertext_len -= ASCON_TAG_SIZE;
     memcpy(resb_tag, (uint8_t*) (resb_output + *ciphertext_len), ASCON_TAG_SIZE);
 
     return RETURNCODE_SUCCESS;
