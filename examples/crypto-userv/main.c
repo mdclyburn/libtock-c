@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <libtock/interface/button.h>
 #include <libtock/services/userv.h>
 #include <libtock/tock.h>
 
@@ -34,6 +35,32 @@ uint8_t resb_tag[ARG_BUFFER_TAG_LEN];
 
 void __usercall(int a_operation_id, int arg1, int arg2, void *data);
 
+void
+__button_pressed(
+  __attribute__((unused)) returncode_t rc,
+  int button_no,
+  bool pressed
+);
+
+void print_timings(void);
+
+static inline uint32_t rtc1_now(void) {
+  return (*(volatile uint32_t*)(0x40011000UL + 0x0504UL)) & 0x00FFFFFFUL;
+}
+
+static inline uint32_t rtc1_diff(uint32_t start, uint32_t end) {
+  return (end - start) & 0x00FFFFFFUL;
+}
+
+static inline uint32_t ticks_to_us(uint32_t ticks) {
+  return (uint32_t)(((uint64_t)ticks * 15625ULL) / 512ULL);
+}
+
+static uint32_t unallow_ticks[7];
+static uint32_t allow_ticks[7];
+static uint32_t encrypt_ticks;
+static uint32_t userv_total_ticks;
+
 void offer_userv_arg_buffers(void);
 void claim_userv_arg_buffers(void);
 
@@ -48,6 +75,8 @@ int main(void) {
   returncode_t rc;
 
   offer_userv_arg_buffers();
+
+  libtock_button_notify_on_press(1, __button_pressed);
 
   // Let the userspace service registry know of this service.
   rc = libtock_userv_register(LIBTOCK_USERV_ROLE_CRYPTO, __usercall);
@@ -70,6 +99,7 @@ __usercall(
   int arg2,
   __attribute__((unused)) void *data) 
 {
+  uint32_t t_userv_start = rtc1_now();
   claim_userv_arg_buffers();
   const uint32_t operation_id = (uint32_t)a_operation_id;
 
@@ -92,9 +122,14 @@ __usercall(
     const uint32_t aad_len = (uint32_t) arg2;
     uint32_t ciphertext_len;
 
+    uint32_t t_enc0 = rtc1_now();
     returncode_t rc = run_encrypt(plaintext_len, aad_len, &ciphertext_len);
+    uint32_t t_enc1 = rtc1_now();
+    encrypt_ticks = rtc1_diff(t_enc0, t_enc1);
 
     offer_userv_arg_buffers();
+    uint32_t t_userv_end = rtc1_now();
+    userv_total_ticks = rtc1_diff(t_userv_start, t_userv_end);
 
     if (rc == RETURNCODE_SUCCESS)
     {
@@ -150,11 +185,16 @@ __allow_op_arg_buffers(
     ARG_BUFFER_TAG_LEN,
   };
 
+  uint32_t* const target_ticks = reclaim ? unallow_ticks : allow_ticks;
+
   for (uint32_t i = 0; i < sizeof(argbnos) / sizeof(argbnos[0]); i++)
   {
     const uint32_t buffer_len = reclaim ? 0 : argbnos_len[i];
+    uint32_t t0 = rtc1_now();
     returncode_t rc = tock_allow_rw_return_to_returncode(
         allow_readwrite(DRIVER_NUM_USERV, i, ((void *) argbnos[i]), buffer_len));
+    uint32_t t1 = rtc1_now();
+    target_ticks[i] = rtc1_diff(t0, t1);
 
     if (rc != RETURNCODE_SUCCESS)
     {
@@ -165,8 +205,11 @@ __allow_op_arg_buffers(
 
   for (uint32_t i = 0; i < sizeof(resbnos) / sizeof(resbnos[0]); i++) {
     const uint32_t buffer_len = reclaim ? 0 : resbnos_len[i];
+    uint32_t t0 = rtc1_now();
     returncode_t rc = tock_allow_ro_return_to_returncode(
         allow_readonly(DRIVER_NUM_USERV, i, ((void *) resbnos[i]), buffer_len));
+    uint32_t t1 = rtc1_now();
+    target_ticks[5 + i] = rtc1_diff(t0, t1);
 
     if (rc != RETURNCODE_SUCCESS)
     {
@@ -216,7 +259,7 @@ returncode_t run_encrypt(
 
   if (err == 0)
   {
-    printf("ct len: %lu, tag len: %u\n", *ciphertext_len - ASCON_TAG_SIZE, ASCON_TAG_SIZE);
+    // printf("ct len: %lu, tag len: %u\n", *ciphertext_len - ASCON_TAG_SIZE, ASCON_TAG_SIZE);
 
     // Copy AAD tag to the result buffer.
     *ciphertext_len -= ASCON_TAG_SIZE;
@@ -239,3 +282,49 @@ returncode_t run_encrypt(
    - OU: plaintext (length byte + data)
 */
 returncode_t run_decrypt(void) { return RETURNCODE_ENOSUPPORT; }
+
+void
+__button_pressed(
+  __attribute__((unused)) returncode_t rc,
+  int button_no,
+  bool pressed
+)
+{
+  if (button_no == 1 && pressed)
+  {
+    print_timings();
+  }
+
+  return;
+}
+
+void print_timings(void)
+{
+      uint32_t unallow_sum = 0;
+      uint32_t allow_sum = 0;
+      for (uint32_t i = 0; i < 7; i++) {
+        unallow_sum += unallow_ticks[i];
+        allow_sum += allow_ticks[i];
+      }
+
+      uint32_t parts_sum = unallow_sum + encrypt_ticks + allow_sum;
+      printf("[userv] unallows(t): %lu %lu %lu %lu %lu %lu %lu | sum=%lut (%lu us)\n",
+        (unsigned long)unallow_ticks[0], (unsigned long)unallow_ticks[1],
+        (unsigned long)unallow_ticks[2], (unsigned long)unallow_ticks[3],
+        (unsigned long)unallow_ticks[4], (unsigned long)unallow_ticks[5],
+        (unsigned long)unallow_ticks[6],
+        (unsigned long)unallow_sum, (unsigned long)ticks_to_us(unallow_sum));
+      printf("[userv] encrypt=%lut (%lu us)\n",
+        (unsigned long)encrypt_ticks, (unsigned long)ticks_to_us(encrypt_ticks));
+      printf("[userv] allows(t):   %lu %lu %lu %lu %lu %lu %lu | sum=%lut (%lu us)\n",
+        (unsigned long)allow_ticks[0], (unsigned long)allow_ticks[1],
+        (unsigned long)allow_ticks[2], (unsigned long)allow_ticks[3],
+        (unsigned long)allow_ticks[4], (unsigned long)allow_ticks[5],
+        (unsigned long)allow_ticks[6],
+        (unsigned long)allow_sum, (unsigned long)ticks_to_us(allow_sum));
+      printf("[userv] parts_sum=%lut (%lu us), total=%lut (%lu us)\n",
+        (unsigned long)parts_sum, (unsigned long)ticks_to_us(parts_sum),
+        (unsigned long)userv_total_ticks, (unsigned long)ticks_to_us(userv_total_ticks));
+
+      return;
+}

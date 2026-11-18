@@ -423,7 +423,7 @@ static void __on_button_press(__attribute__((unused)) returncode_t rc,
                               int button_no, bool pressed) {
 
   if (pressed) {
-    printf("button %d pressed\n", button_no);
+    // printf("button %d pressed\n", button_no);
 
     switch (button_no) {
     case 0:
@@ -462,10 +462,9 @@ static void __send_test_packet(void) {
     return;
   }
 
-  printf("Initiating send.\n");
-  ;
+//   printf("Initiating send.\n");
 
-  printf("Original CoAP message size: %d B\n", sizeof(coap_payload));
+//   printf("Original CoAP message size: %d B\n", sizeof(coap_payload));
 
   if (sizeof(coap_payload) > MAX_PAYLOAD_LEN) {
     printf("Payload too large to send (%d B > %ld B).\n", sizeof(coap_payload),
