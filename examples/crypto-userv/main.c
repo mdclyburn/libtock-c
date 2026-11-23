@@ -165,6 +165,10 @@ __usercall(
  )
 {
   returncode_t rc;
+  uint32_t* const target_ticks = reclaim ? unallow_ticks : allow_ticks;
+  for (uint32_t i = 1; i < 7; i++) {
+    target_ticks[i] = 0;
+  }
 
   if (!reclaim)
   {
@@ -179,7 +183,10 @@ __usercall(
       (uint32_t) resb_tag, ARG_BUFFER_TAG_LEN,
     };
 
+    uint32_t t0 = rtc1_now();
     rc = multiallow(DRIVER_NUM_USERV, descriptors, sizeof(descriptors) / sizeof(uint32_t) / 2);
+    uint32_t t1 = rtc1_now();
+    target_ticks[0] = rtc1_diff(t0, t1);
   }
   else
   {
@@ -194,7 +201,10 @@ __usercall(
       0, 0,
     };
 
+    uint32_t t0 = rtc1_now();
     rc = multiallow(DRIVER_NUM_USERV, descriptors, sizeof(descriptors) / sizeof(uint32_t) / 2);
+    uint32_t t1 = rtc1_now();
+    target_ticks[0] = rtc1_diff(t0, t1);
   }
 
   if (rc != RETURNCODE_SUCCESS)
