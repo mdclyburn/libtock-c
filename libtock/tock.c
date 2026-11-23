@@ -363,6 +363,34 @@ allow_userspace_r_return_t allow_userspace_read(uint32_t driver,
   }
 }
 
+returncode_t
+multiallow(
+  const uint32_t driver,
+  const uint32_t* const descriptors,
+  const uint32_t descriptors_count)
+{
+  register uint32_t r0 __asm__ ("r0") = (uint32_t) driver;
+  register uint32_t r1 __asm__ ("r1") = (uint32_t) descriptors;
+  register uint32_t r2 __asm__ ("r2") = descriptors_count;
+  register int rtype __asm__ ("r0");
+  register int rv1 __asm__ ("r1");
+  register int rv2 __asm__ ("r2");
+  register int rv3 __asm__ ("r3");
+  __asm__ volatile (
+    "svc 8"
+    : "=r" (rtype), "=r" (rv1), "=r" (rv2), "=r" (rv3)
+    : "r" (r0), "r" (r1), "r" (r2)
+    : "memory"
+    );
+  if (rtype == TOCK_SYSCALL_SUCCESS) {
+    return RETURNCODE_SUCCESS;
+  } else if (rtype == TOCK_SYSCALL_FAILURE) {
+    return tock_status_to_returncode(rv1);
+  } else {
+    // Invalid return type
+    exit(1);
+  }}
+
 memop_return_t memop(uint32_t op_type, int arg1) {
   register uint32_t r0 __asm__ ("r0") = op_type;
   register int r1 __asm__ ("r1")      = arg1;

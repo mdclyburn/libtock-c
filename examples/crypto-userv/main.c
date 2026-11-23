@@ -74,6 +74,10 @@ returncode_t run_decrypt(void);
 int main(void) {
   returncode_t rc;
 
+  // HACK: get the kernel to allocate the process' grant.
+  rc = tock_allow_rw_return_to_returncode(
+    allow_readwrite(DRIVER_NUM_USERV, 0, 0, 0));
+
   offer_userv_arg_buffers();
 
   libtock_button_notify_on_press(1, __button_pressed);
@@ -153,6 +157,54 @@ __usercall(
   return;
 }
 
+/** Offer or claim argument buffers to/from the kernel using the experimental multiallow.
+ */
+ static void
+ __multiallow_op_arg_buffers(
+  bool reclaim
+ )
+{
+  returncode_t rc;
+
+  if (!reclaim)
+  {
+    const uint32_t descriptors[] = {
+      (uint32_t) argb_input, ARG_BUFFER_INPUT_LEN | 0b10000000,
+      (uint32_t) argb_aad, ARG_BUFFER_AAD_LEN | 0b10000000,
+      (uint32_t) argb_key, ARG_BUFFER_KEY_LEN | 0b10000000,
+      (uint32_t) argb_nonce, ARG_BUFFER_NONCE_LEN | 0b10000000,
+      (uint32_t) argb_tag, ARG_BUFFER_TAG_LEN | 0b10000000,
+
+      (uint32_t) resb_output, ARG_BUFFER_OUTPUT_LEN,
+      (uint32_t) resb_tag, ARG_BUFFER_TAG_LEN,
+    };
+
+    rc = multiallow(DRIVER_NUM_USERV, descriptors, sizeof(descriptors) / sizeof(uint32_t) / 2);
+  }
+  else
+  {
+    const uint32_t descriptors[] = {
+      0, 0,
+      0, 0,
+      0, 0,
+      0, 0,
+      0, 0,
+
+      0, 0,
+      0, 0,
+    };
+
+    rc = multiallow(DRIVER_NUM_USERV, descriptors, sizeof(descriptors) / sizeof(uint32_t) / 2);
+  }
+
+  if (rc != RETURNCODE_SUCCESS)
+  {
+    printf("failed to multiallow buffers: %d\n", rc);
+  }
+
+  return;
+}
+
 /** Offer or claim argument buffers to/from the kernel.
  */
 static void
@@ -222,13 +274,15 @@ __allow_op_arg_buffers(
 }
 
 void offer_userv_arg_buffers(void) {
-  __allow_op_arg_buffers(false);
+  // __allow_op_arg_buffers(false);
+  __multiallow_op_arg_buffers(false);
 
   return;
 }
 
 void claim_userv_arg_buffers(void) { 
-  __allow_op_arg_buffers(true);
+  // __allow_op_arg_buffers(true);
+  __multiallow_op_arg_buffers(true);
 
   return;
 }

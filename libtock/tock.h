@@ -218,6 +218,13 @@ allow_userspace_r_return_t allow_userspace_read(uint32_t driver,
 __attribute__ ((warn_unused_result))
 allow_ro_return_t allow_readonly(uint32_t driver, uint32_t allow, const void* ptr, size_t size);
 
+__attribute__ ((warn_unused_result))
+returncode_t
+multiallow(
+  const uint32_t driver,
+  const uint32_t* const descriptors,
+  const uint32_t descriptors_count);
+
 // Call the memop syscall.
 memop_return_t memop(uint32_t op_type, int arg1);
 
